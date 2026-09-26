@@ -1,0 +1,135 @@
+"use client";
+
+import Link from "next/link";
+import {
+  Calendar,
+  Code2,
+  Contact,
+  FileText,
+  Folder,
+  GitBranch,
+  GitMerge,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Search,
+  Sheet,
+  ShoppingBag,
+  Webhook,
+  type LucideIcon,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ConfirmButton } from "@/components/common/confirm-button";
+import { useAction } from "@/hooks/use-action";
+import type { IntegrationInfo } from "@/lib/integrations/catalog";
+import { connectIntegrationAction, disconnectIntegrationAction } from "../tools/actions";
+
+const ICONS: Record<string, LucideIcon> = {
+  contact: Contact,
+  mail: Mail,
+  calendar: Calendar,
+  search: Search,
+  sheet: Sheet,
+  "shopping-bag": ShoppingBag,
+  code: Code2,
+  webhook: Webhook,
+  folder: Folder,
+  "message-square": MessageSquare,
+  "file-text": FileText,
+  github: GitBranch,
+  gitlab: GitMerge,
+};
+
+type Row = IntegrationInfo & {
+  disabledByPlatform?: boolean;
+  connection: { id: string; status: string; isSimulated: boolean; connectedAt: string; tools: number; lastError: string | null } | null;
+};
+
+const CATEGORIES = ["CRM", "Communication", "Productivity", "Data", "Commerce", "Research", "Development", "Custom"] as const;
+
+export function IntegrationsGrid({ integrations, canManage }: { integrations: Row[]; canManage: boolean }) {
+  return (
+    <div className="grid gap-8">
+      {CATEGORIES.map((cat) => {
+        const items = integrations.filter((i) => i.category === cat);
+        if (!items.length) return null;
+        return (
+          <section key={cat} aria-labelledby={`cat-${cat}`}>
+            <h2 id={`cat-${cat}`} className="mb-3 text-eyebrow text-text-muted">
+              {cat}
+            </h2>
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((i) => (
+                <IntegrationCard key={i.key} i={i} canManage={canManage} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusBadge({ i }: { i: Row }) {
+  if (i.disabledByPlatform) return <Badge className="bg-danger-soft text-danger-text">Turned off by platform admin</Badge>;
+  if (i.connection?.status === "CONNECTED") {
+    return <Badge className="bg-success-soft text-success-text">{i.connection.isSimulated ? "Connected · simulated" : "Connected"}</Badge>;
+  }
+  if (i.connection?.status === "NEEDS_REAUTH") return <Badge className="bg-warning-soft text-warning-text">Needs reauthorization</Badge>;
+  if (i.connection?.status === "ERROR") return <Badge className="bg-danger-soft text-danger-text">Error</Badge>;
+  if (i.connection?.status === "DISCONNECTED") return <Badge variant="secondary">Disconnected</Badge>;
+  if (i.availability === "requires_setup") return <Badge variant="secondary">Not configured</Badge>;
+  if (i.availability === "coming_soon") return <Badge variant="secondary">Coming soon</Badge>;
+  return <Badge variant="outline">Available</Badge>;
+}
+
+function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
+  const Icon = ICONS[i.icon] ?? Code2;
+  const connect = useAction(connectIntegrationAction, { success: `${i.name} connected.` });
+  const disconnect = useAction(disconnectIntegrationAction, { success: `${i.name} disconnected.` });
+  const connected = i.connection?.status === "CONNECTED";
+  return (
+    <li className="flex flex-col rounded-xl border bg-surface p-4 shadow-card">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-text-secondary">
+          <Icon className="size-5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-card-title">{i.name}</p>
+            {i.simulated && <Badge className="bg-ai-soft text-ai">Simulated</Badge>}
+          </div>
+          <p className="text-[13px] text-text-secondary">{i.description}</p>
+        </div>
+      </div>
+      <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+        <StatusBadge i={i} />
+        {i.key === "custom_http" ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href="/tools/new">Build a tool</Link>
+          </Button>
+        ) : i.key === "webhook" ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href="/workflows">Use in a workflow</Link>
+          </Button>
+        ) : connected ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">{i.connection?.tools} tools</span>
+            {canManage && (
+              <ConfirmButton size="sm" variant="ghost" title={`Disconnect ${i.name}?`} description="Its tools stop working immediately. Employee permissions are kept for when you reconnect." confirmLabel="Disconnect" onConfirm={() => disconnect.run(i.key)}>
+                Disconnect
+              </ConfirmButton>
+            )}
+          </div>
+        ) : i.disabledByPlatform ? null : i.availability === "available" && canManage ? (
+          <Button size="sm" onClick={() => void connect.run(i.key)} disabled={connect.pending}>
+            {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
+          </Button>
+        ) : i.availability === "requires_setup" ? (
+          <span className="text-right text-[11px] text-text-muted">Operator must set {i.setupEnv?.[0]}</span>
+        ) : null}
+      </div>
+    </li>
+  );
+}

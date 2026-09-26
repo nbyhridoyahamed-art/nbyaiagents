@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-e2e/
 /out/
 
 # production
@@ -39,3 +40,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/lib/generated/prisma
+!.env.example
+
+# local runtime data (embedded postgres, uploaded files)
+/.data/
+
+# playwright
+/test-results/
+/playwright-report/

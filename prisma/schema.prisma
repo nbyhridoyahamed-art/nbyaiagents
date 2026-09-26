@@ -1,0 +1,1500 @@
+// NBY AI Agents — data model
+//
+// Conventions
+// - IDs are prefixed + random (e.g. `agent_3f9c…`, `run_81ab…`) via the SQL function
+//   `nby_id(prefix)` created in the first migration. Prefixes make logs traceable.
+// - Every organization-owned record carries `orgId`. Repositories always filter by it.
+// - `deletedAt` marks soft deletion where recovery / audit matters.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Identity & tenancy
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PlatformRole {
+  USER
+  SUPER_ADMIN
+}
+
+model User {
+  id              String       @id @default(dbgenerated("nby_id('usr'::text)"))
+  email           String       @unique
+  name            String
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  avatarUrl       String?
+  platformRole    PlatformRole @default(USER)
+  lastLoginAt     DateTime?
+  /// Set by a platform admin: the user can't sign in and their sessions are revoked.
+  disabledAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  sessions      Session[]
+  memberships   OrganizationMember[]
+  notifications Notification[]
+  conversations Conversation[]
+  assignedTasks Task[]         @relation("TaskAssignee")
+}
+
+model Session {
+  id                   String   @id @default(dbgenerated("nby_id('ses'::text)"))
+  tokenHash            String   @unique
+  userId               String
+  activeOrganizationId String?
+  expiresAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  createdAt            DateTime @default(now())
+  lastSeenAt           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String                @id @default(dbgenerated("nby_id('vt'::text)"))
+  userId    String
+  type      VerificationTokenType
+  tokenHash String                @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+
+  @@index([userId, type])
+}
+
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+model Organization {
+  id                    String    @id @default(dbgenerated("nby_id('org'::text)"))
+  name                  String
+  slug                  String    @unique
+  timezone              String    @default("UTC")
+  industry              String?
+  companySize           String?
+  website               String?
+  description           String?
+  businessGoals         String[]  @default([])
+  logoUrl               String?
+  plan                  Plan      @default(FREE)
+  monthlyAiBudgetUsd    Float     @default(100)
+  /// Seeded sample workspace: everything in it is demo data and is labelled as such in the UI.
+  isDemo                Boolean   @default(false)
+  /// Set by a platform admin: members can't use the workspace and nothing new runs.
+  suspendedAt           DateTime?
+  suspendedReason       String?
+  onboardingCompletedAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  members         OrganizationMember[]
+  invitations     Invitation[]
+  departments     Department[]
+  agents          Agent[]
+  knowledgeBases  KnowledgeBase[]
+  tools           Tool[]
+  credentials     ToolCredential[]
+  connections     IntegrationConnection[]
+  workflows       Workflow[]
+  tasks           Task[]
+  approvals       Approval[]
+  approvalPolicies ApprovalPolicy[]
+  policies        Policy[]
+  conversations   Conversation[]
+  notifications   Notification[]
+  activity        ActivityLog[]
+  apiKeys         ApiKey[]
+  webhooks        Webhook[]
+  usageRecords    UsageRecord[]
+  aiProviders     AiProvider[]
+  files           StoredFile[]
+  schedules       Schedule[]
+  templates       Template[]
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+model OrganizationMember {
+  id        String   @id @default(dbgenerated("nby_id('mem'::text)"))
+  orgId     String
+  userId    String
+  role      OrgRole  @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id          String    @id @default(dbgenerated("nby_id('inv'::text)"))
+  orgId       String
+  email       String
+  role        OrgRole   @default(MEMBER)
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([email])
+}
+
+model Department {
+  id          String    @id @default(dbgenerated("nby_id('dept'::text)"))
+  orgId       String
+  name        String
+  description String?
+  color       String    @default("#5B5FEF")
+  icon        String    @default("building-2")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  organization Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agents       Agent[]
+  workflows    Workflow[]
+  tasks        Task[]
+  knowledge    KnowledgeAssignment[]
+  policies     Policy[]
+  approvalPolicies ApprovalPolicy[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI employees
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AgentStatus {
+  WORKING
+  ACTIVE
+  WAITING
+  APPROVAL
+  ERROR
+  PAUSED
+  SCHEDULED
+}
+
+enum AgentLifecycle {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Agent {
+  id               String         @id @default(dbgenerated("nby_id('agent'::text)"))
+  orgId            String
+  departmentId     String?
+  name             String
+  jobTitle         String
+  description      String?
+  avatarColor      String         @default("#5B5FEF")
+  avatarUrl        String?
+  mission          String?
+  responsibilities String[]       @default([])
+  goals            String[]       @default([])
+  kpis             String[]       @default([])
+  priority         Priority       @default(MEDIUM)
+  personality      String         @default("professional")
+  personalityNotes String?
+  status           AgentStatus    @default(ACTIVE)
+  statusMessage    String?
+  lifecycle        AgentLifecycle @default(DRAFT)
+  publishedVersion Int?
+  draftVersion     Int            @default(1)
+  // Execution limits (per run)
+  maxStepsPerRun     Int   @default(12)
+  maxToolCallsPerRun Int   @default(8)
+  maxTokensPerRun    Int   @default(60000)
+  maxCostPerRunUsd   Float @default(1)
+  monthlyBudgetUsd   Float @default(25)
+  canDelegate        Boolean @default(false)
+  /// Template this employee was hired from, and that template's version at the time.
+  templateKey      String?
+  templateVersion  Int?
+  createdById      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
+  organization   Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department     Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  instructions   AgentInstruction[]
+  versions       AgentVersion[]
+  memories       AgentMemory[]
+  providerConfig AgentProviderConfig?
+  tools          AgentTool[]
+  knowledge      KnowledgeAssignment[]
+  tasks          Task[]
+  runs           AgentRun[]
+  conversations  Conversation[]
+  approvals      Approval[]
+  policies       Policy[]
+  approvalPolicies ApprovalPolicy[]
+  delegatesTo    AgentDelegation[]     @relation("delegator")
+  delegatedFrom  AgentDelegation[]     @relation("delegate")
+  workflows      AgentWorkflow[]
+  schedules      Schedule[]
+
+  @@index([orgId, deletedAt])
+  @@index([orgId, status])
+  @@index([departmentId])
+}
+
+enum InstructionSection {
+  ROLE
+  MISSION
+  RESPONSIBILITIES
+  RULES
+  MUST_DO
+  MUST_NEVER
+  TONE
+  DECISION_RULES
+  ESCALATION_RULES
+  TOOL_USAGE_RULES
+  KNOWLEDGE_RULES
+  OUTPUT_FORMAT
+}
+
+model AgentInstruction {
+  id        String             @id @default(dbgenerated("nby_id('ins'::text)"))
+  agentId   String
+  section   InstructionSection
+  content   String
+  updatedAt DateTime           @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, section])
+}
+
+enum VersionStatus {
+  DRAFT
+  TESTED
+  PUBLISHED
+  SUPERSEDED
+}
+
+/// Immutable snapshot of an agent's full configuration at publish time.
+/// Runs always execute against a published snapshot, never the live draft.
+model AgentVersion {
+  id            String        @id @default(dbgenerated("nby_id('agv'::text)"))
+  orgId         String
+  agentId       String
+  version       Int
+  status        VersionStatus @default(PUBLISHED)
+  snapshot      Json
+  notes         String?
+  publishedById String?
+  createdAt     DateTime      @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, version])
+  @@index([orgId])
+}
+
+enum ProviderKind {
+  ANTHROPIC
+  OPENAI
+  GOOGLE
+  OPENAI_COMPATIBLE
+  OFFLINE
+}
+
+/// Org-level AI provider configuration. API keys live in ToolCredential (encrypted).
+model AiProvider {
+  id           String       @id @default(dbgenerated("nby_id('aip'::text)"))
+  orgId        String
+  kind         ProviderKind
+  name         String
+  baseUrl      String?
+  credentialId String?
+  defaultModel String?
+  enabled      Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  credential   ToolCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, kind, name])
+}
+
+model AgentProviderConfig {
+  id               String        @id @default(dbgenerated("nby_id('apc'::text)"))
+  agentId          String        @unique
+  provider         ProviderKind  @default(OFFLINE)
+  model            String        @default("offline-demo")
+  fallbackProvider ProviderKind?
+  fallbackModel    String?
+  temperature      Float         @default(0.3)
+  maxOutputTokens  Int           @default(1500)
+  updatedAt        DateTime      @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+enum MemoryScope {
+  LONG_TERM
+  ORGANIZATION
+}
+
+model AgentMemory {
+  id             String      @id @default(dbgenerated("nby_id('amem'::text)"))
+  orgId          String
+  agentId        String?
+  scope          MemoryScope @default(LONG_TERM)
+  content        String
+  sourceType     String?
+  sourceId       String?
+  importance     Int         @default(3)
+  embedding      Float[]     @default([])
+  createdByUserId String?
+  createdAt      DateTime    @default(now())
+
+  agent Agent? @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, agentId])
+}
+
+model AgentDelegation {
+  id          String   @id @default(dbgenerated("nby_id('dlg'::text)"))
+  orgId       String
+  delegatorId String
+  delegateId  String
+  createdAt   DateTime @default(now())
+
+  delegator Agent @relation("delegator", fields: [delegatorId], references: [id], onDelete: Cascade)
+  delegate  Agent @relation("delegate", fields: [delegateId], references: [id], onDelete: Cascade)
+
+  @@unique([delegatorId, delegateId])
+  @@index([orgId])
+}
+
+model AgentWorkflow {
+  id         String   @id @default(dbgenerated("nby_id('awf'::text)"))
+  agentId    String
+  workflowId String
+  createdAt  DateTime @default(now())
+
+  agent    Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, workflowId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Knowledge
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum KnowledgeVisibility {
+  RESTRICTED
+  ORGANIZATION
+}
+
+model KnowledgeBase {
+  id          String              @id @default(dbgenerated("nby_id('kb'::text)"))
+  orgId       String
+  name        String
+  description String?
+  category    String?
+  visibility  KnowledgeVisibility @default(RESTRICTED)
+  createdById String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
+
+  organization Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  documents    KnowledgeDocument[]
+  assignments  KnowledgeAssignment[]
+
+  @@index([orgId, deletedAt])
+}
+
+enum KnowledgeSourceType {
+  UPLOAD
+  MANUAL
+  WEBSITE
+  SITEMAP
+  GOOGLE_DRIVE
+  NOTION
+  DROPBOX
+  ONEDRIVE
+}
+
+enum IndexStatus {
+  PENDING
+  PROCESSING
+  INDEXED
+  FAILED
+}
+
+model KnowledgeDocument {
+  id              String              @id @default(dbgenerated("nby_id('doc'::text)"))
+  orgId           String
+  knowledgeBaseId String
+  title           String
+  sourceType      KnowledgeSourceType
+  mimeType        String?
+  fileName        String?
+  fileSize        Int?
+  fileId          String?
+  sourceUrl       String?
+  content         String?
+  checksum        String?
+  status          IndexStatus         @default(PENDING)
+  error           String?
+  chunkCount      Int                 @default(0)
+  tokenCount      Int                 @default(0)
+  pageCount       Int?
+  embeddingModel  String?
+  indexedAt       DateTime?
+  createdById     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+
+  knowledgeBase KnowledgeBase    @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  chunks        KnowledgeChunk[]
+  file          StoredFile?      @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, knowledgeBaseId, deletedAt])
+  @@index([status])
+}
+
+model KnowledgeChunk {
+  id              String   @id @default(dbgenerated("nby_id('chk'::text)"))
+  orgId           String
+  knowledgeBaseId String
+  documentId      String
+  index           Int
+  content         String
+  heading         String?
+  pageNumber      Int?
+  tokenCount      Int
+  embedding       Float[]  @default([])
+  embeddingModel  String
+  createdAt       DateTime @default(now())
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, knowledgeBaseId])
+  @@index([documentId])
+}
+
+/// Grants an agent or a whole department access to a knowledge collection.
+model KnowledgeAssignment {
+  id              String   @id @default(dbgenerated("nby_id('kas'::text)"))
+  orgId           String
+  knowledgeBaseId String
+  agentId         String?
+  departmentId    String?
+  createdAt       DateTime @default(now())
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  agent         Agent?        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  department    Department?   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeBaseId, agentId])
+  @@unique([knowledgeBaseId, departmentId])
+  @@index([orgId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tools, credentials, integrations
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ToolKind {
+  BUILTIN
+  CUSTOM_HTTP
+  WEBHOOK
+}
+
+model Tool {
+  id            String    @id @default(dbgenerated("nby_id('tool'::text)"))
+  orgId         String
+  key           String
+  name          String
+  description   String
+  kind          ToolKind
+  integrationKey String?
+  connectionId  String?
+  riskLevel     RiskLevel @default(LOW)
+  capabilities  String[]  @default([])
+  inputSchema   Json
+  outputSchema  Json?
+  httpConfig    Json?
+  credentialId  String?
+  isSimulated   Boolean   @default(false)
+  enabled       Boolean   @default(true)
+  version       Int       @default(1)
+  lastTestedAt  DateTime?
+  lastTestOk    Boolean?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  organization Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  connection   IntegrationConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  credential   ToolCredential?        @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  agents       AgentTool[]
+
+  @@unique([orgId, key])
+  @@index([orgId, deletedAt])
+}
+
+enum PermissionEffect {
+  ALLOW
+  REQUIRE_APPROVAL
+  DENY
+}
+
+/// Assignment of a tool to an agent, with the agent-level permission for that action.
+model AgentTool {
+  id        String           @id @default(dbgenerated("nby_id('agt'::text)"))
+  orgId     String
+  agentId   String
+  toolId    String
+  effect    PermissionEffect @default(ALLOW)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tool  Tool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, toolId])
+  @@index([orgId])
+}
+
+enum CredentialType {
+  API_KEY
+  BEARER_TOKEN
+  BASIC_AUTH
+  OAUTH2
+  WEBHOOK_SECRET
+}
+
+/// Secrets are AES-256-GCM encrypted server-side. Plaintext is never returned to
+/// the browser, never logged and never placed in model context.
+model ToolCredential {
+  id             String         @id @default(dbgenerated("nby_id('cred'::text)"))
+  orgId          String
+  name           String
+  type           CredentialType
+  ciphertext     String
+  keyVersion     Int            @default(1)
+  hint           String?
+  createdById    String?
+  lastUsedAt     DateTime?
+  rotatedAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tools        Tool[]
+  connections  IntegrationConnection[]
+  providers    AiProvider[]
+
+  @@index([orgId])
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  NEEDS_REAUTH
+}
+
+model IntegrationConnection {
+  id             String           @id @default(dbgenerated("nby_id('conn'::text)"))
+  orgId          String
+  integrationKey String
+  name           String
+  status         ConnectionStatus @default(CONNECTED)
+  isSimulated    Boolean          @default(false)
+  credentialId   String?
+  config         Json?
+  lastError      String?
+  connectedById  String?
+  connectedAt    DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  credential   ToolCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  tools        Tool[]
+
+  @@unique([orgId, integrationKey])
+}
+
+/// Records held by simulated (mock) integrations — e.g. Mock CRM contacts and the
+/// Mock Email outbox. Nothing here ever leaves the system.
+model MockRecord {
+  id             String   @id @default(dbgenerated("nby_id('mock'::text)"))
+  orgId          String
+  integrationKey String
+  collection     String
+  data           Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([orgId, integrationKey, collection])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Policies & approvals
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PolicyScope {
+  ORGANIZATION
+  DEPARTMENT
+  AGENT
+}
+
+/// Business rule for AI behaviour. `enforcement` makes the rule machine-enforced
+/// at runtime (not just prompt text), e.g. {"type":"deny_capability","capability":"financial"}.
+model Policy {
+  id           String      @id @default(dbgenerated("nby_id('pol'::text)"))
+  orgId        String
+  scope        PolicyScope @default(ORGANIZATION)
+  departmentId String?
+  agentId      String?
+  name         String
+  rule         String
+  enforcement  Json?
+  enabled      Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, scope])
+}
+
+/// Conditional approval rules: IF <conditions> THEN <effect>.
+model ApprovalPolicy {
+  id           String           @id @default(dbgenerated("nby_id('apol'::text)"))
+  orgId        String
+  name         String
+  description  String?
+  scope        PolicyScope      @default(ORGANIZATION)
+  departmentId String?
+  agentId      String?
+  conditions   Json
+  effect       PermissionEffect @default(REQUIRE_APPROVAL)
+  priority     Int              @default(100)
+  enabled      Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, enabled])
+}
+
+enum ApprovalKind {
+  TOOL_ACTION
+  REVIEW
+  QUESTION
+  INPUT_REQUEST
+  ESCALATION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ANSWERED
+  EXPIRED
+  CANCELLED
+}
+
+model Approval {
+  id             String         @id @default(dbgenerated("nby_id('apr'::text)"))
+  orgId          String
+  kind           ApprovalKind
+  status         ApprovalStatus @default(PENDING)
+  title          String
+  summary        String?
+  agentId        String?
+  taskId         String?
+  agentRunId     String?
+  workflowRunId  String?
+  workflowStepId String?
+  toolKey        String?
+  toolName       String?
+  riskLevel      RiskLevel?
+  proposedInput  Json?
+  editedInput    Json?
+  reasons        String[]       @default([])
+  question       String?
+  response       String?
+  isSimulation   Boolean        @default(false)
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  expiresAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, status])
+  @@index([workflowRunId])
+  @@index([agentRunId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tasks & agent execution
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TaskStatus {
+  QUEUED
+  RUNNING
+  WAITING
+  AWAITING_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionMode {
+  LIVE
+  SIMULATION
+}
+
+model Task {
+  id               String        @id @default(dbgenerated("nby_id('task'::text)"))
+  orgId            String
+  title            String
+  description      String?
+  agentId          String?
+  departmentId     String?
+  priority         Priority      @default(MEDIUM)
+  status           TaskStatus    @default(QUEUED)
+  mode             ExecutionMode @default(LIVE)
+  dueAt            DateTime?
+  inputs           Json?
+  outputs          Json?
+  result           String?
+  error            String?
+  progress         Int           @default(0)
+  currentStep      String?
+  workflowId       String?
+  workflowRunId    String?
+  parentTaskId     String?
+  createdById      String?
+  createdByAgentId String?
+  assigneeUserId   String?
+  takenOverAt      DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agent        Agent?        @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  assignee     User?         @relation("TaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  department   Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  comments     TaskComment[]
+  parent       Task?         @relation("subtasks", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subtasks     Task[]        @relation("subtasks")
+
+  @@index([orgId, status])
+  @@index([orgId, agentId])
+  @@index([orgId, assigneeUserId])
+  @@index([workflowRunId])
+}
+
+model TaskComment {
+  id            String   @id @default(dbgenerated("nby_id('tcm'::text)"))
+  orgId         String
+  taskId        String
+  authorUserId  String?
+  authorAgentId String?
+  body          String
+  createdAt     DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  WAITING
+  AWAITING_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// One execution of an AI employee (for a task, chat message, workflow node or delegation).
+model AgentRun {
+  id             String        @id @default(dbgenerated("nby_id('run'::text)"))
+  orgId          String
+  agentId        String
+  agentVersion   Int?
+  taskId         String?
+  conversationId String?
+  workflowRunId  String?
+  workflowNodeKey String?
+  parentRunId    String?
+  status         RunStatus     @default(QUEUED)
+  mode           ExecutionMode @default(LIVE)
+  provider       ProviderKind?
+  model          String?
+  input          String?
+  output         String?
+  structuredOutput Json?
+  citations      Json?
+  state          Json?
+  inputTokens    Int           @default(0)
+  outputTokens   Int           @default(0)
+  costUsd        Float         @default(0)
+  stepCount      Int           @default(0)
+  toolCallCount  Int           @default(0)
+  error          String?
+  escalated      Boolean       @default(false)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  agent Agent          @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  steps AgentRunStep[]
+
+  @@index([orgId, status])
+  @@index([agentId, createdAt])
+  @@index([taskId])
+  @@index([workflowRunId])
+}
+
+enum RunStepType {
+  CONTEXT
+  MODEL_CALL
+  KNOWLEDGE_SEARCH
+  MEMORY
+  TOOL_CALL
+  DELEGATION
+  APPROVAL
+  QUESTION
+  ESCALATION
+  OUTPUT
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+  WAITING
+  AWAITING_APPROVAL
+  DENIED
+  CANCELLED
+}
+
+/// Operational trace of what an agent did. Never contains hidden model reasoning.
+model AgentRunStep {
+  id         String      @id @default(dbgenerated("nby_id('ars'::text)"))
+  orgId      String
+  runId      String
+  sequence   Int
+  type       RunStepType
+  label      String
+  status     StepStatus  @default(RUNNING)
+  toolKey    String?
+  input      Json?
+  outputMeta Json?
+  tokens     Int         @default(0)
+  costUsd    Float       @default(0)
+  latencyMs  Int?
+  error      String?
+  approvalId String?
+  createdAt  DateTime    @default(now())
+  completedAt DateTime?
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, sequence])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversations
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id            String   @id @default(dbgenerated("nby_id('conv'::text)"))
+  orgId         String
+  agentId       String
+  userId        String
+  title         String   @default("New conversation")
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([orgId, agentId, userId])
+}
+
+enum MessageRole {
+  USER
+  AGENT
+  SYSTEM
+}
+
+model Message {
+  id             String      @id @default(dbgenerated("nby_id('msg'::text)"))
+  orgId          String
+  conversationId String
+  role           MessageRole
+  content        String
+  runId          String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workflows
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum TriggerType {
+  MANUAL
+  SCHEDULE
+  WEBHOOK
+  API
+  EVENT
+}
+
+model Workflow {
+  id               String         @id @default(dbgenerated("nby_id('wf'::text)"))
+  orgId            String
+  name             String
+  description      String?
+  departmentId     String?
+  status           WorkflowStatus @default(DRAFT)
+  triggerType      TriggerType    @default(MANUAL)
+  publishedVersion Int?
+  draftVersion     Int            @default(1)
+  templateKey      String?
+  templateVersion  Int?
+  createdById      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
+  organization Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department   Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  versions     WorkflowVersion[]
+  runs         WorkflowRun[]
+  agents       AgentWorkflow[]
+  webhooks     Webhook[]
+  schedules    Schedule[]
+
+  @@index([orgId, deletedAt])
+}
+
+model WorkflowVersion {
+  id          String        @id @default(dbgenerated("nby_id('wfv'::text)"))
+  orgId       String
+  workflowId  String
+  version     Int
+  status      VersionStatus @default(DRAFT)
+  variables   Json?
+  settings    Json?
+  lastValidatedAt DateTime?
+  lastSimulationOk Boolean?
+  publishedById String?
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workflow Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  nodes    WorkflowNode[]
+  edges    WorkflowEdge[]
+  runs     WorkflowRun[]
+
+  @@unique([workflowId, version])
+  @@index([orgId])
+}
+
+model WorkflowNode {
+  id        String @id @default(dbgenerated("nby_id('wfn'::text)"))
+  versionId String
+  key       String
+  type      String
+  label     String
+  config    Json
+  positionX Float  @default(0)
+  positionY Float  @default(0)
+
+  version WorkflowVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, key])
+}
+
+model WorkflowEdge {
+  id           String  @id @default(dbgenerated("nby_id('wfe'::text)"))
+  versionId    String
+  key          String
+  source       String
+  target       String
+  sourceHandle String?
+  label        String?
+
+  version WorkflowVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, key])
+}
+
+model WorkflowRun {
+  id              String        @id @default(dbgenerated("nby_id('wfr'::text)"))
+  orgId           String
+  workflowId      String
+  versionId       String
+  version         Int
+  status          RunStatus     @default(QUEUED)
+  mode            ExecutionMode @default(LIVE)
+  trigger         TriggerType   @default(MANUAL)
+  triggerPayload  Json?
+  state           Json
+  stepCount       Int           @default(0)
+  toolCallCount   Int           @default(0)
+  tokenCount      Int           @default(0)
+  costUsd         Float         @default(0)
+  error           String?
+  idempotencyKey  String?
+  taskId          String?
+  createdById     String?
+  cancelRequested Boolean       @default(false)
+  progress        Int           @default(0)
+  output          Json?
+  leaseOwner      String?
+  leaseUntil      DateTime?
+  parentRunId     String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  workflow        Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflowVersion WorkflowVersion   @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  steps           WorkflowRunStep[]
+
+  @@unique([orgId, idempotencyKey])
+  @@index([orgId, status])
+  @@index([workflowId, createdAt])
+}
+
+model WorkflowRunStep {
+  id          String     @id @default(dbgenerated("nby_id('wfs'::text)"))
+  orgId       String
+  runId       String
+  nodeKey     String
+  nodeType    String
+  label       String
+  sequence    Int
+  status      StepStatus @default(PENDING)
+  attempt     Int        @default(1)
+  input       Json?
+  output      Json?
+  error       String?
+  approvalId  String?
+  agentRunId  String?
+  tokens      Int        @default(0)
+  costUsd     Float      @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, sequence])
+}
+
+model Schedule {
+  id         String    @id @default(dbgenerated("nby_id('sch'::text)"))
+  orgId      String
+  workflowId String?
+  agentId    String?
+  name       String
+  cron       String
+  timezone   String    @default("UTC")
+  payload    Json?
+  enabled    Boolean   @default(true)
+  nextRunAt  DateTime?
+  lastRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  workflow     Workflow?    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  agent        Agent?       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+}
+
+model Webhook {
+  id             String    @id @default(dbgenerated("nby_id('whk'::text)"))
+  orgId          String
+  workflowId     String
+  key            String    @unique
+  secretCiphertext String
+  requireSignature Boolean @default(true)
+  enabled        Boolean   @default(true)
+  lastReceivedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  workflow     Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Observability, notifications, usage
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ActorType {
+  USER
+  AGENT
+  SYSTEM
+  INTEGRATION
+  API_KEY
+}
+
+enum ActivityCategory {
+  AGENT
+  WORKFLOW
+  APPROVAL
+  INTEGRATION
+  KNOWLEDGE
+  TASK
+  SYSTEM
+}
+
+/// Human-readable operational feed ("Sarah completed lead qualification").
+model ActivityLog {
+  id           String           @id @default(dbgenerated("nby_id('act'::text)"))
+  orgId        String
+  category     ActivityCategory
+  actorType    ActorType
+  actorUserId  String?
+  actorAgentId String?
+  summary      String
+  detail       String?
+  entityType   String?
+  entityId     String?
+  link         String?
+  isSimulation Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, category, createdAt])
+}
+
+enum AuditOutcome {
+  SUCCESS
+  DENIED
+  FAILED
+}
+
+/// Immutable security/compliance log. Metadata is redacted before insert.
+model AuditLog {
+  id            String       @id @default(dbgenerated("nby_id('aud'::text)"))
+  orgId         String?
+  actorType     ActorType
+  actorUserId   String?
+  actorAgentId  String?
+  actorApiKeyId String?
+  action        String
+  entityType    String?
+  entityId      String?
+  outcome       AuditOutcome @default(SUCCESS)
+  runId         String?
+  taskId        String?
+  workflowRunId String?
+  stepId        String?
+  toolKey       String?
+  ipAddress     String?
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+
+  @@index([orgId, createdAt])
+  @@index([orgId, action])
+  @@index([runId])
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("nby_id('ntf'::text)"))
+  orgId     String
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, orgId, readAt])
+}
+
+enum UsageKind {
+  AI_TOKENS
+  EMBEDDING_TOKENS
+  TOOL_CALL
+  AGENT_RUN
+  WORKFLOW_RUN
+  API_REQUEST
+  STORAGE_BYTES
+}
+
+model UsageRecord {
+  id           String        @id @default(dbgenerated("nby_id('use'::text)"))
+  orgId        String
+  kind         UsageKind
+  agentId      String?
+  runId        String?
+  workflowRunId String?
+  provider     ProviderKind?
+  model        String?
+  inputTokens  Int           @default(0)
+  outputTokens Int           @default(0)
+  quantity     Int           @default(1)
+  costUsd      Float         @default(0)
+  isSimulation Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, kind, createdAt])
+  @@index([agentId, createdAt])
+}
+
+model ApiKey {
+  id          String    @id @default(dbgenerated("nby_id('key'::text)"))
+  orgId       String
+  name        String
+  prefix      String
+  hashedKey   String    @unique
+  scopes      String[]
+  createdById String?
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Files, templates, jobs, infrastructure
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StoredFile {
+  id          String   @id @default(dbgenerated("nby_id('file'::text)"))
+  orgId       String
+  storageKey  String   @unique
+  fileName    String
+  mimeType    String
+  size        Int
+  checksum    String
+  purpose     String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  organization Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  documents    KnowledgeDocument[]
+
+  @@index([orgId])
+}
+
+enum TemplateKind {
+  AGENT
+  WORKFLOW
+}
+
+model Template {
+  id          String       @id @default(dbgenerated("nby_id('tpl'::text)"))
+  orgId       String?
+  kind        TemplateKind
+  key         String
+  name        String
+  description String
+  category    String
+  version     Int          @default(1)
+  config      Json
+  isSystem    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, key, version])
+  @@index([kind])
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  DEAD
+}
+
+/// Durable job queue used when Redis/BullMQ is not configured.
+model Job {
+  id          String    @id @default(dbgenerated("nby_id('job'::text)"))
+  queue       String
+  name        String
+  payload     Json
+  status      JobStatus @default(PENDING)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  runAt       DateTime  @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  dedupeKey   String?   @unique
+  orgId       String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([queue, status, runAt])
+}
+
+/// Guards external side-effects against duplicate execution (timeouts, retries).
+model IdempotencyRecord {
+  id        String   @id @default(dbgenerated("nby_id('idem'::text)"))
+  orgId     String
+  key       String
+  scope     String
+  status    String
+  response  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgId, scope, key])
+}
+
+model RateLimitBucket {
+  key         String   @id
+  windowStart DateTime
+  count       Int
+  updatedAt   DateTime @updatedAt
+}
+
+enum EmailStatus {
+  SENT
+  LOGGED
+  FAILED
+}
+
+/// Transactional email outbox (verification, invitations, approvals...).
+model EmailMessage {
+  id        String      @id @default(dbgenerated("nby_id('eml'::text)"))
+  orgId     String?
+  to        String
+  subject   String
+  template  String
+  status    EmailStatus
+  provider  String
+  error     String?
+  createdAt DateTime    @default(now())
+
+  @@index([to])
+}
+
+/// Platform-wide switches managed by platform admins (e.g. disabled integrations or templates).
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
