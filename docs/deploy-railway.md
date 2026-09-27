@@ -70,7 +70,7 @@ Expect about 30–45 minutes the first time.
 
 | File | What it does on Railway |
 |---|---|
-| `railway.json` | Configuration as code. Railway reads it automatically; settings in it override the dashboard. It sets:<br>• **build:** `npm run build`<br>• **pre-deploy:** `npm run db:deploy`, which runs database migrations before each release<br>• **start:** `npm start`<br>• **health check:** `/api/health`<br>• **sleeping:** off<br>• **restart policy:** restart on failure |
+| `railway.json` | Records the intended service settings. Railway has deprecated config-as-code, and services created after 2026-08-28 ignore this file, so set the same values in the dashboard (Step 3). |
 | `package.json` → `engines.node` | `>=20.9.0`. Railway's builder (Railpack) picks the Node version from this. |
 | `package.json` → `build` | `prisma generate && next build`. Generates the database client and builds the app. |
 | `prisma/migrations/` | The database schema, applied by `prisma migrate deploy` in the pre-deploy step. |
@@ -108,7 +108,11 @@ git push -u origin feat/nby-ai-agents-v1
 1. In the same project, click **Create → GitHub Repo**. Authorise Railway to read your GitHub account if asked, then pick `nby-ai-agents`.
 2. Open the new service → **Settings**:
    - **Source → Branch:** choose the branch you pushed (e.g. `feat/nby-ai-agents-v1`, or `main` after merging).
-   - **Build / Deploy:** leave the commands empty, because `railway.json` supplies them. The settings page shows them as coming from the config file.
+   - **Build:** leave the builder on **Railpack** and the build command empty. Railpack runs `npm run build` by default.
+   - **Deploy → Pre-deploy step:** set it to `npm run db:deploy`, which runs database migrations before each release.
+   - **Deploy → Start command:** leave it empty. Railpack runs `npm start` by default.
+   - **Deploy → Healthcheck Path:** set it to `/api/health`.
+   - **Deploy → Serverless:** keep it **off**. If the app sleeps, the job worker and scheduler stop.
    - Rename the service to something like `web`. This is optional.
 3. Railway will try to deploy immediately. **That first deploy fails** because no environment variables exist yet. That's expected; continue.
 
@@ -188,7 +192,7 @@ Click **Deploy** (or **Apply changes**) to save.
 ## Step 6 — Give it a domain
 
 1. Open the app service → **Settings → Networking**.
-2. Click **Generate Domain** to get `https://<name>.up.railway.app`. Put this exact address in `APP_URL` if you haven't already.
+2. Click **Generate Domain**, enter port `8080` (the `PORT` Railway gives the app), and you get `https://<name>.up.railway.app`. Put this exact address in `APP_URL` if you haven't already.
 3. **Custom domain** (recommended before real users sign up):
    1. Click **Custom Domain** and enter e.g. `app.yourdomain.com`.
    2. Railway shows a **CNAME** record (and possibly a TXT record for verification). Add them at your DNS provider.
@@ -269,7 +273,7 @@ Email failures never break the request that triggered them. They're logged as `[
 - [ ] **AI:** give an AI employee a task. The run should show your real model, not "Offline demo model", if you set an AI key.
 - [ ] **Scheduler:** create a workflow with a schedule trigger a few minutes ahead and confirm it runs. This proves the embedded worker and scheduler are alive.
 - [ ] **Webhooks:** in the workflow builder, check that the public webhook URL uses your real domain
-- [ ] The service's sleeping setting is **off** (`railway.json` sets `"sleepApplication": false`)
+- [ ] The service's sleeping setting is **off** (Settings → Deploy → Serverless)
 - [ ] Backups are in place (see below)
 - [ ] `ENCRYPTION_KEY` is saved in a password manager
 - [ ] Usage alerts or a spending limit are set in Railway's billing settings
