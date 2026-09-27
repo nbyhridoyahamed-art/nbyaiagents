@@ -30,6 +30,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Lets end-to-end tests build into their own folder without disturbing `next dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The app doesn't use next/image, so the optimizer (and its native `sharp` binary) stays off.
+  images: { unoptimized: true },
   poweredByHeader: false,
   // Heavy server-only packages stay out of the bundler.
   serverExternalPackages: ["bullmq", "ioredis", "exceljs", "mammoth", "unpdf", "pg", "@prisma/adapter-pg"],

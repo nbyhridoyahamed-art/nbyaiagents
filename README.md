@@ -180,6 +180,10 @@ npm run test:e2e            # Playwright: production build on :3100 with its own
 
 ## Deployment
 
+**Railway (recommended):** follow [docs/deploy-railway.md](docs/deploy-railway.md). `railway.json` in the repo root configures the build, pre-deploy migrations, start command and health check (`/api/health`).
+
+**Any other Node host:**
+
 1. Provision PostgreSQL (and optionally Redis). Set `DATABASE_URL`, `APP_URL` (https), `ENCRYPTION_KEY`, `SIGNING_SECRET`, `EMAIL_PROVIDER=resend` and `RESEND_API_KEY`, and AI keys as needed.
 2. Run `npm ci && npm run db:generate && npm run build && npm run db:deploy`.
 3. Run the web server (`npm start`) with `EMBEDDED_WORKER=false`, plus one or more `npm run worker` processes.
