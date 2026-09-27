@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Calendar,
   Code2,
@@ -20,10 +23,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/common/confirm-button";
 import { useAction } from "@/hooks/use-action";
 import type { IntegrationInfo } from "@/lib/integrations/catalog";
-import { connectIntegrationAction, disconnectIntegrationAction } from "../tools/actions";
+import { connectIntegrationAction, connectShopifyAction, disconnectIntegrationAction } from "../tools/actions";
 
 const ICONS: Record<string, LucideIcon> = {
   contact: Contact,
@@ -43,12 +47,29 @@ const ICONS: Record<string, LucideIcon> = {
 
 type Row = IntegrationInfo & {
   disabledByPlatform?: boolean;
+  configured?: boolean;
   connection: { id: string; status: string; isSimulated: boolean; connectedAt: string; tools: number; lastError: string | null } | null;
 };
 
 const CATEGORIES = ["CRM", "Communication", "Productivity", "Data", "Commerce", "Research", "Development", "Custom"] as const;
 
+/** Surfaces the result of an OAuth/Shopify redirect (?connected=1 | ?error=...) as a toast, then cleans the URL. */
+function useConnectionResultToast() {
+  const router = useRouter();
+  const params = useSearchParams();
+  useEffect(() => {
+    const error = params.get("error");
+    const connected = params.get("connected");
+    if (!error && !connected) return;
+    if (error) toast.error(error);
+    else toast.success("Connected.");
+    router.replace("/integrations");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once for the params this page loaded with
+  }, []);
+}
+
 export function IntegrationsGrid({ integrations, canManage }: { integrations: Row[]; canManage: boolean }) {
+  useConnectionResultToast();
   return (
     <div className="grid gap-8">
       {CATEGORIES.map((cat) => {
@@ -79,7 +100,7 @@ function StatusBadge({ i }: { i: Row }) {
   if (i.connection?.status === "NEEDS_REAUTH") return <Badge className="bg-warning-soft text-warning-text">Needs reauthorization</Badge>;
   if (i.connection?.status === "ERROR") return <Badge className="bg-danger-soft text-danger-text">Error</Badge>;
   if (i.connection?.status === "DISCONNECTED") return <Badge variant="secondary">Disconnected</Badge>;
-  if (i.availability === "requires_setup") return <Badge variant="secondary">Not configured</Badge>;
+  if (i.availability === "requires_setup") return i.configured ? <Badge variant="outline">Available</Badge> : <Badge variant="secondary">Not configured</Badge>;
   if (i.availability === "coming_soon") return <Badge variant="secondary">Coming soon</Badge>;
   return <Badge variant="outline">Available</Badge>;
 }
@@ -126,10 +147,58 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
           <Button size="sm" onClick={() => void connect.run(i.key)} disabled={connect.pending}>
             {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
           </Button>
+        ) : i.availability === "requires_setup" && canManage && i.authType === "oauth2" && i.configured ? (
+          <Button asChild size="sm">
+            <a href={`/api/integrations/${i.provider}/authorize`}>{i.connection ? "Reconnect" : "Connect"}</a>
+          </Button>
+        ) : i.availability === "requires_setup" && canManage && i.authType === "platform_key" && i.configured ? (
+          <Button size="sm" onClick={() => void connect.run(i.key)} disabled={connect.pending}>
+            {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
+          </Button>
+        ) : i.availability === "requires_setup" && canManage && i.authType === "credential" ? (
+          <ShopifyConnectForm />
         ) : i.availability === "requires_setup" ? (
           <span className="text-right text-[11px] text-text-muted">Operator must set {i.setupEnv?.[0]}</span>
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** Shopify has no OAuth app to register — each org pastes its own store's Admin API access token. */
+function ShopifyConnectForm() {
+  const [open, setOpen] = useState(false);
+  const [shop, setShop] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const connect = useAction(connectShopifyAction, { success: "Shopify connected." });
+
+  if (!open) {
+    return (
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Connect
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="flex w-full flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void connect.run({ shop, accessToken }).then((res) => res.ok && setOpen(false));
+      }}
+    >
+      <Input placeholder="my-store.myshopify.com" value={shop} onChange={(e) => setShop(e.target.value)} aria-label="Shopify store domain" required />
+      {connect.fieldErrors.shop && <p className="text-xs text-danger-text">{connect.fieldErrors.shop}</p>}
+      <Input type="password" placeholder="Admin API access token" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} aria-label="Shopify Admin API access token" required />
+      {connect.fieldErrors.accessToken && <p className="text-xs text-danger-text">{connect.fieldErrors.accessToken}</p>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={connect.pending}>
+          {connect.pending && <Loader2 className="animate-spin" aria-hidden />} Connect
+        </Button>
+      </div>
+    </form>
   );
 }

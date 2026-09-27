@@ -7,7 +7,7 @@ import { requireOrgContext } from "@/lib/auth/context";
 import { userActor } from "@/lib/auth/actor";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { capabilityKeys } from "@/lib/policies/types";
-import { connectIntegration, disconnectIntegration } from "@/server/services/integrations";
+import { connectIntegration, connectShopify, disconnectIntegration } from "@/server/services/integrations";
 import { createCredential, revokeCredential, rotateCredential } from "@/server/services/credentials";
 import { createCustomTool, deleteTool, setToolEnabled, setToolRisk, testTool, updateCustomTool } from "@/server/services/tools";
 import { redact } from "@/lib/security/redact";
@@ -27,6 +27,16 @@ export async function disconnectIntegrationAction(key: string): Promise<ActionRe
   return runAction(z.string().min(1).max(60), key, async (k) => {
     const ctx = await requireOrgContext("tools:manage");
     await disconnectIntegration(userActor(ctx.org.id, ctx.user.id), k);
+    revalidatePath("/integrations");
+  });
+}
+
+const shopifyConnectSchema = z.object({ shop: z.string().trim().min(1).max(120), accessToken: z.string().trim().min(1).max(500) });
+
+export async function connectShopifyAction(input: z.input<typeof shopifyConnectSchema>): Promise<ActionResult> {
+  return runAction(shopifyConnectSchema, input, async (d) => {
+    const ctx = await requireOrgContext("tools:manage");
+    await connectShopify(userActor(ctx.org.id, ctx.user.id), d);
     revalidatePath("/integrations");
   });
 }

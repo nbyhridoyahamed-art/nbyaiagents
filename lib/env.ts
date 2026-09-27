@@ -44,7 +44,11 @@ const schema = z.object({
     .optional()
     .transform((v) => v === "true"),
   GOOGLE_OAUTH_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional().default(""),
   HUBSPOT_OAUTH_CLIENT_ID: z.string().optional().default(""),
+  HUBSPOT_OAUTH_CLIENT_SECRET: z.string().optional().default(""),
+  /** Platform-wide key for the real Web Search tool (Tavily). No per-org credential. */
+  TAVILY_API_KEY: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof schema>;

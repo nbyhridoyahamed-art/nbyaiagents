@@ -11,6 +11,8 @@ import { getToolDefinition, zodToJsonSchema } from "@/lib/tools/registry";
 import { buildHttpRequest, httpConfigSchema, httpInputJsonSchema, httpInputZod, pickPath } from "@/lib/tools/http-config";
 import type { ToolExecutionContext, ToolResult } from "@/lib/tools/types";
 import { decryptSecret } from "@/lib/security/crypto";
+import { getValidAccessToken } from "@/lib/integrations/oauth/tokens";
+import { providerForIntegration } from "@/lib/integrations/oauth/providers";
 import { redact, summarizeForLog } from "@/lib/security/redact";
 import { safeHttpRequest } from "@/lib/security/ssrf";
 import { applicableApprovalRules, applicablePolicies, internalDomains } from "@/server/services/permissions";
@@ -234,6 +236,11 @@ async function loadSecret(tool: ToolRow, connectionCredentialId: string | null):
   if (!credId) return null;
   const cred = await prisma.toolCredential.findFirst({ where: { id: credId, orgId: tool.orgId, revokedAt: null } });
   if (!cred) throw new AppError("NOT_CONFIGURED", `The credential for ${tool.name} was revoked or removed.`);
+  if (cred.type === "OAUTH2") {
+    const provider = tool.integrationKey ? providerForIntegration(tool.integrationKey) : null;
+    if (!provider) throw new AppError("NOT_CONFIGURED", `${tool.name} has an OAuth credential but no known provider.`);
+    return getValidAccessToken(cred.id, provider);
+  }
   return decryptSecret(cred.ciphertext);
 }
 
