@@ -11,6 +11,8 @@ import { Field } from "@/components/forms/field";
 import { ListEditor } from "@/components/forms/list-editor";
 import { AVATAR_COLORS, INSTRUCTION_SECTIONS, PERSONALITIES, type InstructionKey } from "@/lib/agents/schema";
 import { PROVIDER_LABELS } from "@/lib/ai/models";
+import { isOpenModelProvider } from "@/lib/ai/provider-presets";
+import { ModelCombobox } from "@/components/ai/model-combobox";
 import type { ProviderKind } from "@/lib/generated/prisma/enums";
 import { useAction } from "@/hooks/use-action";
 import { cn } from "@/lib/utils";
@@ -319,7 +321,7 @@ function ProviderModelPicker({
 }: {
   label: string;
   value: { provider: ProviderKind; model: string } | null;
-  providers: { kind: ProviderKind; configured: boolean }[];
+  providers: { kind: ProviderKind; configured: boolean; defaultModel?: string | null }[];
   models: { id: string; provider: ProviderKind; label: string }[];
   onChange: (v: { provider: ProviderKind; model: string } | null) => void;
   optional?: boolean;
@@ -333,7 +335,8 @@ function ProviderModelPicker({
           onValueChange={(v) => {
             if (v === "none") return onChange(null);
             const provider = v as ProviderKind;
-            onChange({ provider, model: models.find((m) => m.provider === provider)?.id ?? "default" });
+            const fallback = isOpenModelProvider(provider) ? (providers.find((p) => p.kind === provider)?.defaultModel ?? "") : "";
+            onChange({ provider, model: models.find((m) => m.provider === provider)?.id ?? fallback });
           }}
         >
           <SelectTrigger className="h-10 w-full" aria-label={`${label} provider`}>
@@ -349,14 +352,8 @@ function ProviderModelPicker({
             ))}
           </SelectContent>
         </Select>
-        {value && value.provider === "OPENAI_COMPATIBLE" ? (
-          <input
-            className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-            value={value.model}
-            onChange={(e) => onChange({ ...value, model: e.target.value })}
-            aria-label={`${label} model name`}
-            placeholder="model name"
-          />
+        {value && isOpenModelProvider(value.provider) ? (
+          <ModelCombobox provider={value.provider} value={value.model} onChange={(model) => onChange({ ...value, model })} ariaLabel={`${label} model name`} />
         ) : (
           <Select key={value?.provider ?? "none"} value={value?.model ?? ""} onValueChange={(m) => value && onChange({ ...value, model: m })} disabled={!value}>
             <SelectTrigger className="h-10 w-full" aria-label={`${label} model`}>

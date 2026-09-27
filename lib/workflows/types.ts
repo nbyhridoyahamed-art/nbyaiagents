@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALL_PROVIDERS } from "@/lib/ai/provider-presets";
 import { outputSpecSchema } from "@/lib/ai/output-spec";
 
 /**
@@ -37,7 +38,7 @@ const aiBase = {
   ...common,
   prompt: z.string().min(1, "Write the instructions for this step.").max(8000),
   outputSpec: outputSpecSchema.optional(),
-  provider: z.enum(["ANTHROPIC", "OPENAI", "GOOGLE", "OPENAI_COMPATIBLE", "OFFLINE"]).optional(),
+  provider: z.enum(ALL_PROVIDERS).optional(),
   model: z.string().max(100).optional(),
 };
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isOpenModelProvider } from "@/lib/ai/provider-presets";
 import { entitlementsFor } from "@/lib/billing/entitlements";
 import { assertTemplateEnabled } from "@/server/services/platform-settings";
 import { AppError, notFound } from "@/lib/errors";
@@ -8,7 +9,7 @@ import type { Actor } from "@/lib/auth/actor";
 import { createAgentSchema, type CreateAgentData, type CreateAgentInput, type InstructionKey } from "@/lib/agents/schema";
 import type { AgentSnapshot } from "@/lib/agents/snapshot";
 import { getAgentTemplate } from "@/lib/templates/agents";
-import { getModel } from "@/lib/ai/models";
+import { PROVIDER_LABELS, getModel } from "@/lib/ai/models";
 import { defaultModelFor, resolveProviderCredentials } from "@/server/services/ai-providers";
 import { recordActivity, writeAudit } from "@/server/services/audit";
 
@@ -311,7 +312,7 @@ export async function validateAgent(orgId: string, agentId: string): Promise<Val
   if (!pc) {
     issues.push({ level: "error", area: "model", message: "No AI model is selected.", fixHref: `${base}&section=model`, fixLabel: "Choose model" });
   } else {
-    if (pc.provider !== "OPENAI_COMPATIBLE" && !getModel(pc.model)) {
+    if (isOpenModelProvider(pc.provider) ? !pc.model.trim() : !getModel(pc.model)) {
       issues.push({ level: "error", area: "model", message: `The model "${pc.model}" isn't recognised.`, fixHref: `${base}&section=model`, fixLabel: "Choose model" });
     }
     const creds = await resolveProviderCredentials(orgId, pc.provider);
@@ -319,7 +320,7 @@ export async function validateAgent(orgId: string, agentId: string): Promise<Val
       issues.push({
         level: "error",
         area: "model",
-        message: `${agent.name} uses ${pc.provider.toLowerCase()} but no API key is configured for it.`,
+        message: `${agent.name} uses ${PROVIDER_LABELS[pc.provider]} but no API key is configured for it.`,
         fixHref: "/settings/providers",
         fixLabel: "Add API key",
       });

@@ -33,6 +33,8 @@ import { PermissionSelect, EFFECT_META, type Effect } from "@/components/agents/
 import { RiskBadge, SimulatedBadge } from "@/components/tools/risk-badge";
 import { AVATAR_COLORS, INSTRUCTION_SECTIONS, PERSONALITIES, type CreateAgentInput, type InstructionKey } from "@/lib/agents/schema";
 import { PROVIDER_LABELS } from "@/lib/ai/models";
+import { isOpenModelProvider } from "@/lib/ai/provider-presets";
+import { ModelCombobox } from "@/components/ai/model-combobox";
 import type { ProviderKind, RiskLevel } from "@/lib/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { createAgentAction } from "@/app/(app)/agents/actions";
@@ -43,7 +45,7 @@ export interface WizardOptions {
   knowledgeBases: { id: string; name: string; description: string | null; documents: number }[];
   tools: { id: string; key: string; name: string; description: string; riskLevel: RiskLevel; capabilities: string[]; isSimulated: boolean; kind: string }[];
   workflows: { id: string; name: string; status: string }[];
-  providers: { kind: ProviderKind; configured: boolean; source: string }[];
+  providers: { kind: ProviderKind; configured: boolean; source: string; defaultModel?: string | null }[];
   models: { id: string; provider: ProviderKind; label: string; description: string; recommended: boolean }[];
   defaultModel: { provider: ProviderKind; model: string };
   templates: { key: string; name: string; jobTitle: string; department: string; summary: string; color: string }[];
@@ -517,7 +519,8 @@ export function HireWizard({ options, initial, mode, aiPrompt }: { options: Wiza
                         onValueChange={(v) => {
                           const provider = v as ProviderKind;
                           const first = options.models.find((m) => m.provider === provider);
-                          set("model", { provider, model: first?.id ?? "default" });
+                          const fallback = isOpenModelProvider(provider) ? (options.providers.find((p) => p.kind === provider)?.defaultModel ?? "") : "";
+                          set("model", { provider, model: first?.id ?? fallback });
                         }}
                       >
                         <SelectTrigger className="h-10 w-full" aria-label="Provider">
@@ -532,21 +535,25 @@ export function HireWizard({ options, initial, mode, aiPrompt }: { options: Wiza
                           ))}
                         </SelectContent>
                       </Select>
-                      <Select value={draft.model.model} onValueChange={(v) => set("model", { ...draft.model, model: v })}>
-                        <SelectTrigger className="h-10 w-full" aria-label="Model">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {options.models
-                            .filter((m) => m.provider === draft.model.provider)
-                            .map((m) => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.label}
-                                {m.recommended ? " (recommended)" : ""}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                      {isOpenModelProvider(draft.model.provider) ? (
+                        <ModelCombobox provider={draft.model.provider} value={draft.model.model} onChange={(v) => set("model", { ...draft.model, model: v })} ariaLabel="Model" />
+                      ) : (
+                        <Select value={draft.model.model} onValueChange={(v) => set("model", { ...draft.model, model: v })}>
+                          <SelectTrigger className="h-10 w-full" aria-label="Model">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {options.models
+                              .filter((m) => m.provider === draft.model.provider)
+                              .map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.label}
+                                  {m.recommended ? " (recommended)" : ""}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <p className="text-xs text-text-muted">{options.models.find((m) => m.id === draft.model.model)?.description}</p>
                     {configuredProviders.length === 1 && (

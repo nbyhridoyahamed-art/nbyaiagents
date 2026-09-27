@@ -95,6 +95,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI-compatible endpoint. Companies can also add their own keys (encrypted) in **Settings → AI providers**.
 
 - Defaults: `claude-opus-5` (Anthropic), `gpt-4.1` (OpenAI), `gemini-2.5-pro` (Google).
+- **Free tiers and open models:** OpenRouter (free `:free` models), Groq, Cerebras, Mistral and Ollama (self-hosted or Ollama Cloud) all use the OpenAI-compatible adapter.
+  - Their model lists load live from the provider, with free models listed first.
+  - When a company connects one, a free, tool-capable model is picked as the default.
+  - Platform-wide keys are optional: `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `CEREBRAS_API_KEY`, `MISTRAL_API_KEY`, `OLLAMA_BASE_URL`/`OLLAMA_API_KEY`, each with a matching `*_MODEL`.
+  - An Ollama server must be reachable from the app. Private and localhost addresses are blocked unless `ALLOW_PRIVATE_NETWORK_TOOLS=true`.
+  - Costs for models outside the built-in catalog estimate as $0. Check the provider's dashboard for real usage.
 - The model router retries and falls back between providers.
 - Without keys, employees use the **Offline demo model**. It is deterministic, retrieves knowledge and follows simple tool rules, and it says clearly that it isn't AI. The generators then fall back to template matching and say so.
 
@@ -180,7 +186,7 @@ npm run test:e2e            # Playwright: production build on :3100 with its own
 
 ## Deployment
 
-**Railway (recommended):** follow [docs/deploy-railway.md](docs/deploy-railway.md). `railway.json` in the repo root configures the build, pre-deploy migrations, start command and health check (`/api/health`).
+**Railway (recommended):** follow [docs/deploy-railway.md](docs/deploy-railway.md). The guide lists the service settings to set in the dashboard: the pre-deploy migration step and the health check at `/api/health`.
 
 **Any other Node host:**
 

@@ -26,7 +26,7 @@ export default async function ProvidersPage() {
             source: s.source,
             hint: p?.credential?.hint ?? null,
             baseUrl: p?.baseUrl ?? null,
-            defaultModel: p?.defaultModel ?? null,
+            defaultModel: s.defaultModel,
             agents: usage.find((u) => u.provider === s.kind)?._count ?? 0,
           };
         })}

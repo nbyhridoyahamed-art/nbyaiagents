@@ -6,6 +6,8 @@ import { createAnthropicProvider } from "@/lib/ai/providers/anthropic";
 import { createOpenAIProvider } from "@/lib/ai/providers/openai";
 import { createGoogleProvider } from "@/lib/ai/providers/google";
 import { createOfflineProvider } from "@/lib/ai/providers/offline";
+import { PROVIDER_LABELS } from "@/lib/ai/models";
+import { OPENAI_STYLE_PRESETS } from "@/lib/ai/provider-presets";
 import { RetryableProviderError, type AIProvider, type GenerateRequest, type GenerateResponse } from "@/lib/ai/types";
 
 export interface ModelConfig {
@@ -23,7 +25,7 @@ async function defaultFactory(orgId: string, kind: ProviderKind): Promise<AIProv
   if (kind === "OFFLINE") return createOfflineProvider();
   const creds = await resolveProviderCredentials(orgId, kind);
   if (!creds.apiKey) {
-    throw new AppError("NOT_CONFIGURED", `No API key is configured for ${kind.toLowerCase().replace("_", "-")}. Add one in Settings → AI providers.`);
+    throw new AppError("NOT_CONFIGURED", `No API key is configured for ${PROVIDER_LABELS[kind]}. Add one in Settings → AI providers.`);
   }
   switch (kind) {
     case "ANTHROPIC":
@@ -37,6 +39,21 @@ async function defaultFactory(orgId: string, kind: ProviderKind): Promise<AIProv
       return createOpenAIProvider(creds.apiKey, { baseURL: creds.baseUrl, kind: "OPENAI_COMPATIBLE" });
     case "GOOGLE":
       return createGoogleProvider(creds.apiKey);
+    case "OLLAMA":
+      if (!creds.baseUrl) throw new AppError("NOT_CONFIGURED", "The Ollama provider needs the URL of an Ollama server.");
+      await assertResolvesPublic(creds.baseUrl, process.env.ALLOW_PRIVATE_NETWORK_TOOLS === "true");
+      return createOpenAIProvider(creds.apiKey, { baseURL: creds.baseUrl, kind });
+    case "OPENROUTER":
+      // Optional attribution headers OpenRouter uses to identify the calling app.
+      return createOpenAIProvider(creds.apiKey, {
+        baseURL: OPENAI_STYLE_PRESETS.OPENROUTER!.baseUrl!,
+        kind,
+        headers: { ...(process.env.APP_URL ? { "HTTP-Referer": process.env.APP_URL } : {}), "X-Title": "NBY AI Agents" },
+      });
+    case "GROQ":
+    case "CEREBRAS":
+    case "MISTRAL":
+      return createOpenAIProvider(creds.apiKey, { baseURL: OPENAI_STYLE_PRESETS[kind]!.baseUrl!, kind });
   }
 }
 
@@ -50,6 +67,7 @@ export function setProviderFactory(f: ProviderFactory | null) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function attempt(orgId: string, kind: ProviderKind, model: string, cfg: ModelConfig, req: Omit<GenerateRequest, "model" | "maxOutputTokens" | "temperature">) {
+  if (!model.trim()) throw new AppError("NOT_CONFIGURED", `No ${PROVIDER_LABELS[kind]} model is selected. Choose one in the employee's Settings → AI model.`);
   const provider = await factory(orgId, kind);
   let lastErr: unknown;
   for (let i = 0; i < 2; i++) {
@@ -68,11 +86,7 @@ async function attempt(orgId: string, kind: ProviderKind, model: string, cfg: Mo
  * Calls the configured model, retrying transient failures, then the fallback
  * model if one is configured. Returns which model actually answered.
  */
-export async function callModel(
-  orgId: string,
-  cfg: ModelConfig,
-  req: Omit<GenerateRequest, "model" | "maxOutputTokens" | "temperature">,
-): Promise<GenerateResponse & { usedFallback: boolean }> {
+export async function callModel(orgId: string, cfg: ModelConfig, req: Omit<GenerateRequest, "model" | "maxOutputTokens" | "temperature">): Promise<GenerateResponse & { usedFallback: boolean }> {
   try {
     return { ...(await attempt(orgId, cfg.provider, cfg.model, cfg, req)), usedFallback: false };
   } catch (primaryErr) {

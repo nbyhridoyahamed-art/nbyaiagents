@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALL_PROVIDERS } from "@/lib/ai/provider-presets";
 
 export const PERSONALITIES = [
   { key: "professional", label: "Professional", description: "Polished, clear and courteous." },
@@ -65,9 +66,9 @@ export const agentPersonalitySchema = z.object({
 export const instructionsSchema = z.partialRecord(z.enum(instructionKeys), z.string().max(4000));
 
 export const modelConfigSchema = z.object({
-  provider: z.enum(["ANTHROPIC", "OPENAI", "GOOGLE", "OPENAI_COMPATIBLE", "OFFLINE"]),
+  provider: z.enum(ALL_PROVIDERS),
   model: z.string().trim().min(1).max(100),
-  fallbackProvider: z.enum(["ANTHROPIC", "OPENAI", "GOOGLE", "OPENAI_COMPATIBLE", "OFFLINE"]).nullable().optional(),
+  fallbackProvider: z.enum(ALL_PROVIDERS).nullable().optional(),
   fallbackModel: z.string().trim().max(100).nullable().optional(),
   temperature: z.number().min(0).max(1).default(0.3),
   maxOutputTokens: z.number().int().min(256).max(64000).default(4000),

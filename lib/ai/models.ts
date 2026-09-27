@@ -142,6 +142,11 @@ export const PROVIDER_LABELS: Record<ProviderKind, string> = {
   OPENAI: "OpenAI",
   GOOGLE: "Google Gemini",
   OPENAI_COMPATIBLE: "OpenAI-compatible",
+  OPENROUTER: "OpenRouter",
+  OLLAMA: "Ollama",
+  GROQ: "Groq",
+  CEREBRAS: "Cerebras",
+  MISTRAL: "Mistral AI",
   OFFLINE: "Offline demo",
 };
 
@@ -153,17 +158,30 @@ export function modelsFor(provider: ProviderKind): ModelInfo[] {
   return MODELS.filter((m) => m.provider === provider);
 }
 
-/** Estimated USD cost for a model call. Unknown models (e.g. custom endpoints) estimate as 0. */
+/**
+ * Estimated USD cost for a model call. Models outside the catalog (OpenRouter,
+ * Groq, Ollama and other free-form ids) estimate as 0 — check the provider's
+ * dashboard for their real cost.
+ */
 export function estimateCostUsd(modelId: string, inputTokens: number, outputTokens: number): number {
   const m = getModel(modelId);
   if (!m) return 0;
   return (inputTokens * m.inputPerMTok + outputTokens * m.outputPerMTok) / 1_000_000;
 }
 
+/**
+ * Default model per provider. Empty for free-form providers: their model is the
+ * one the organization picked when connecting the provider (AiProvider.defaultModel).
+ */
 export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderKind, string> = {
   ANTHROPIC: "claude-opus-5",
   OPENAI: "gpt-4.1",
   GOOGLE: "gemini-2.5-pro",
-  OPENAI_COMPATIBLE: "default",
+  OPENAI_COMPATIBLE: "",
+  OPENROUTER: "",
+  OLLAMA: "",
+  GROQ: "",
+  CEREBRAS: "",
+  MISTRAL: "",
   OFFLINE: "offline-demo",
 };
