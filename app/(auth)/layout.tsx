@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="px-6 py-5">
-        <Link href="/" aria-label="NBY AI Agents home">
+        <Link href="/" aria-label="Virtual Desks Online home">
           <Logo />
         </Link>
       </header>

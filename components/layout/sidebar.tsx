@@ -92,7 +92,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       )}
     >
       <div className={cn("flex h-[72px] shrink-0 items-center px-4", collapsed && "justify-center px-0")}>
-        <Link href="/dashboard" aria-label="NBY AI Agents — Dashboard">
+        <Link href="/dashboard" aria-label="Virtual Desks Online — Dashboard">
           <Logo collapsed={collapsed} />
         </Link>
       </div>

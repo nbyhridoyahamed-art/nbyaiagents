@@ -39,7 +39,7 @@ export function CompanyHero({ summary, isDemo, canHire }: { summary: DashboardSu
               </span>
             )}
           </div>
-          <h1 id="hero-title" className="mt-2 text-[26px] font-[650] leading-9 tracking-tight lg:text-[30px] lg:leading-10">
+          <h1 id="hero-title" className="font-heading mt-2 text-[26px] font-[650] leading-9 tracking-tight lg:text-[30px] lg:leading-10">
             {headline}
           </h1>
           <p className="mt-2 max-w-xl text-[15px] text-text-secondary">{body}</p>

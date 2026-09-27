@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Jost, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
+const jost = Jost({ variable: "--font-jost", subsets: ["latin"], weight: ["500", "600", "700"], display: "swap" });
+const publicSans = Public_Sans({ variable: "--font-public-sans", subsets: ["latin"], display: "swap" });
+const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"], weight: ["400", "500"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "NBY AI Agents", template: "%s · NBY AI Agents" },
+  title: { default: "Virtual Desks Online", template: "%s · Virtual Desks Online" },
   description:
-    "Build your AI workforce. Create AI employees, give them knowledge, connect their tools, and automate real business work.",
+    "Book, run and hand off a virtual desk. Build your AI workforce, give them knowledge, connect their tools, and automate real business work.",
 };
 
 export const viewport: Viewport = {
@@ -22,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${jost.variable} ${publicSans.variable} ${plexMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem storageKey="nby-theme" disableTransitionOnChange>
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>

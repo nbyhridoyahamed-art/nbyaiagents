@@ -62,14 +62,14 @@ export function AskNby({ canHire, canBuild }: { canHire: boolean; canBuild: bool
           onClick={() => setOpen(true)}
           className="fixed bottom-20 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-ai-solid px-4 py-2.5 text-[13px] font-semibold text-white shadow-pop transition-transform duration-150 hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:bottom-6 md:right-6"
         >
-          <Sparkles className="size-4" aria-hidden /> Ask NBY AI
+          <Sparkles className="size-4" aria-hidden /> Ask VDO AI
         </button>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="size-5 text-ai" aria-hidden /> Ask NBY AI
+              <Sparkles className="size-5 text-ai" aria-hidden /> Ask VDO AI
             </DialogTitle>
             <DialogDescription>Describe an AI employee or a workflow. You&apos;ll get a draft to review — nothing is published or run until you decide.</DialogDescription>
           </DialogHeader>

@@ -1,21 +1,21 @@
 import { cn } from "@/lib/utils";
 
-/** NBY mark: three connected nodes — owner, AI workforce, work. */
+/** Virtual Desks Online mark: a monitor on a desk, with the "online" status dot. */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-brand to-ai text-white shadow-card",
+        "relative inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-brand to-ai text-white shadow-card",
         className,
       )}
       aria-hidden
     >
-      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-        <circle cx="6" cy="7" r="2.2" fill="currentColor" stroke="none" />
-        <circle cx="18" cy="7" r="2.2" fill="currentColor" stroke="none" />
-        <circle cx="12" cy="17.5" r="2.6" fill="currentColor" stroke="none" />
-        <path d="M7.8 8.6 10.6 15M16.2 8.6 13.4 15M8.4 7h7.2" opacity={0.75} />
+      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none">
+        <rect x="4" y="5" width="16" height="10.5" rx="2.2" fill="currentColor" />
+        <rect x="10" y="16" width="4" height="2.4" fill="currentColor" />
+        <rect x="3" y="19" width="18" height="2" rx="1" fill="currentColor" />
       </svg>
+      <span className="absolute -right-[3px] -top-[3px] size-[7px] rounded-full bg-ai ring-2 ring-[var(--surface)]" />
     </span>
   );
 }
@@ -25,8 +25,8 @@ export function Logo({ className, collapsed = false }: { className?: string; col
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark />
       {!collapsed && (
-        <span className="text-[13px] font-bold tracking-[0.08em] text-foreground">
-          NBY <span className="text-brand">AI</span> AGENTS
+        <span className="font-heading text-[13px] font-bold tracking-[0.06em] text-foreground">
+          VIRTUAL DESKS <span className="text-brand">ONLINE</span>
         </span>
       )}
     </span>

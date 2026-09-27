@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Shield className="size-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold">NBY Platform admin</p>
+            <p className="font-heading text-[14px] font-semibold">Virtual Desks Online admin</p>
             <p className="text-xs text-text-muted">Signed in as {admin.email} · actions here are audited</p>
           </div>
           <Link href="/dashboard" className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-brand hover:underline">

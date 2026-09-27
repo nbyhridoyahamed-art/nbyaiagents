@@ -25,7 +25,7 @@ export function PageHeader({
     <div className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between lg:mb-8", className)}>
       <div className="min-w-0">
         {eyebrow && <p className="text-eyebrow mb-1 text-brand">{eyebrow}</p>}
-        <h1 className="text-[26px] font-[650] leading-9 tracking-tight lg:text-page-title">{title}</h1>
+        <h1 className="font-heading text-[26px] font-[650] leading-9 tracking-tight lg:text-page-title">{title}</h1>
         {description && <p className="mt-1.5 max-w-3xl text-text-secondary">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

@@ -20,7 +20,7 @@ export function TopHeader({ onOpenSearch, onOpenMenu }: { onOpenSearch: () => vo
       </Button>
       <Link href="/dashboard" className="flex items-center gap-2 lg:hidden" aria-label="Dashboard">
         <LogoMark className="size-7" />
-        <span className="text-sm font-bold tracking-wide">NBY</span>
+        <span className="font-heading text-sm font-bold tracking-wide">VDO</span>
       </Link>
 
       <div className="hidden min-w-0 flex-1 lg:block">

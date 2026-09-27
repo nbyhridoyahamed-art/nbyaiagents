@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <clipPath id="vdo-app-icon-screen"><rect x="28" y="27" width="72" height="50" rx="11"/></clipPath>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#4F46E5"/>
+  <g clip-path="url(#vdo-app-icon-screen)">
+    <rect x="28" y="27" width="72" height="50" fill="#FFFFFF"/>
+    <rect x="28" y="27" width="72" height="15" fill="#3730C7"/>
+  </g>
+  <rect x="58" y="77" width="12" height="11" fill="#FFFFFF"/>
+  <rect x="20" y="91" width="88" height="10" rx="5" fill="#FFFFFF"/>
+  <circle cx="107" cy="23" r="12.5" fill="#FFFFFF"/>
+  <circle cx="107" cy="23" r="9" fill="#14B8A6"/>
+</svg>
