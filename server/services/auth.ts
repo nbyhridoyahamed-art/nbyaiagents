@@ -112,7 +112,7 @@ export async function sendVerificationEmail(userId: string, email: string, name:
   await sendEmail({
     to: email,
     template: "verification",
-    subject: "Verify your email for NBY AI Agents",
+    subject: "Verify your email for Virtual Desks Online",
     text: `Hi ${name},\n\nConfirm your email address:\n${env().APP_URL}/verify-email?token=${token}\n\nThis link expires in 48 hours.`,
   });
 }
@@ -140,7 +140,7 @@ export async function requestPasswordReset(emailInput: string) {
   await sendEmail({
     to: user.email,
     template: "password_reset",
-    subject: "Reset your NBY AI Agents password",
+    subject: "Reset your Virtual Desks Online password",
     text: `Hi ${user.name},\n\nReset your password:\n${env().APP_URL}/reset-password?token=${token}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`,
   });
   await writeAudit({ actorType: "USER", actorUserId: user.id, action: "auth.password_reset_requested" });

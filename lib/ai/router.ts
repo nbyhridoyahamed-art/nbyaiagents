@@ -48,7 +48,7 @@ async function defaultFactory(orgId: string, kind: ProviderKind): Promise<AIProv
       return createOpenAIProvider(creds.apiKey, {
         baseURL: OPENAI_STYLE_PRESETS.OPENROUTER!.baseUrl!,
         kind,
-        headers: { ...(process.env.APP_URL ? { "HTTP-Referer": process.env.APP_URL } : {}), "X-Title": "NBY AI Agents" },
+        headers: { ...(process.env.APP_URL ? { "HTTP-Referer": process.env.APP_URL } : {}), "X-Title": "Virtual Desks Online" },
       });
     case "GROQ":
     case "CEREBRAS":

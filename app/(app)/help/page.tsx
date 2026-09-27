@@ -45,7 +45,7 @@ export default async function HelpPage() {
   const ctx = await requirePageContext();
   return (
     <PageContainer className="max-w-[1100px]">
-      <PageHeader title="Help" description="How NBY AI Agents works, and how to get your AI company running." />
+      <PageHeader title="Help" description="How Virtual Desks Online works, and how to get your AI company running." />
 
       <section aria-labelledby="start" className="mb-8">
         <h2 id="start" className="text-section-title">

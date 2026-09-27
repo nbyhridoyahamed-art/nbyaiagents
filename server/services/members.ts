@@ -62,7 +62,7 @@ export async function inviteMember(actor: Actor & { userId: string }, emailInput
     to: email,
     orgId: actor.orgId,
     template: "invitation",
-    subject: `${inviter.name} invited you to ${invitation.organization.name} on NBY AI Agents`,
+    subject: `${inviter.name} invited you to ${invitation.organization.name} on Virtual Desks Online`,
     text: `${inviter.name} invited you to join ${invitation.organization.name} as ${ROLE_LABELS[role].label}.\n\nAccept the invitation:\n${link}\n\nThis link expires in 7 days.`,
   });
   await writeAudit({ orgId: actor.orgId, actorType: "USER", actorUserId: actor.userId, action: "member.invite", entityType: "Invitation", entityId: invitation.id, metadata: { email, role } });

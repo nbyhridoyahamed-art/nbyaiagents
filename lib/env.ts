@@ -35,7 +35,7 @@ const schema = z.object({
   /** "file" writes messages to EMAIL_FILE_DIR — local development and end-to-end tests only. */
   EMAIL_PROVIDER: z.enum(["console", "resend", "file"]).default("console"),
   EMAIL_FILE_DIR: z.string().default(".data/mailbox"),
-  EMAIL_FROM: z.string().default("NBY AI Agents <no-reply@localhost>"),
+  EMAIL_FROM: z.string().default("Virtual Desks Online <no-reply@localhost>"),
   RESEND_API_KEY: z.string().optional().default(""),
   STORAGE_DRIVER: z.enum(["local"]).default("local"),
   STORAGE_LOCAL_DIR: z.string().default(".data/storage"),

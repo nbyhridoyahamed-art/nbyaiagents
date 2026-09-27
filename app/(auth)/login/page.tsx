@@ -18,7 +18,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
       subtitle="Sign in to your AI company."
       footer={
         <>
-          New to NBY AI Agents?{" "}
+          New to Virtual Desks Online?{" "}
           <Link href="/signup" className="font-medium text-brand hover:underline">
             Create an account
           </Link>
