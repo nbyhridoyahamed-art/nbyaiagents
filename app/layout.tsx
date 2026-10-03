@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${jost.variable} ${publicSans.variable} ${plexMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem storageKey="nby-theme" disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem storageKey="vdo-theme" disableTransitionOnChange>
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
           <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>

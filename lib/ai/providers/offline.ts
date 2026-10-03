@@ -154,7 +154,7 @@ export function createOfflineProvider(): AIProvider {
       if (!priorToolUse && req.tools?.length && lastText) {
         const words = new Set(tokenize(lastText));
         const ranked = req.tools
-          .filter((t) => !t.name.startsWith("nby_"))
+          .filter((t) => !t.name.startsWith("vdo_"))
           .map((t) => ({ t, score: overlap(tokenize(`${t.name.replace(/[_-]+/g, " ")} ${t.description}`), words) }))
           .sort((a, b) => b.score - a.score);
         const best = ranked[0];

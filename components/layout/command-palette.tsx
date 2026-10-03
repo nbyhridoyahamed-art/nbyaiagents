@@ -6,10 +6,10 @@ import { BookOpen, Building, CheckCircle2, FileText, ListChecks, MessagesSquare,
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
 import { globalSearchAction, type SearchResult } from "@/app/(app)/shell-actions";
 import { NAV_SECTIONS } from "./nav-config";
-import { ASK_EVENT } from "./ask-nby";
+import { ASK_EVENT } from "./ask-desks";
 
 const ACTIONS: { label: string; href: string; icon: typeof Users }[] = [
-  { label: "Ask NBY AI", href: "#ask", icon: Sparkles },
+  { label: "Ask Virtual Desks", href: "#ask", icon: Sparkles },
   { label: "Create AI Employee", href: "/agents/new", icon: UserPlus },
   { label: "Create Workflow", href: "/workflows/new", icon: Workflow },
   { label: "Run Workflow", href: "/workflows?run=1", icon: Play },
@@ -21,7 +21,7 @@ const ACTIONS: { label: string; href: string; icon: typeof Users }[] = [
 ];
 
 const GROUP_ICONS: Record<SearchResult["group"], typeof Users> = {
-  Agents: Users,
+  Employees: Users,
   Tasks: ListChecks,
   Workflows: Workflow,
   Knowledge: FileText,

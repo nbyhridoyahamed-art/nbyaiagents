@@ -19,7 +19,7 @@ export const API_SCOPES = {
 export type ApiScope = keyof typeof API_SCOPES;
 export const API_SCOPE_KEYS = Object.keys(API_SCOPES) as [ApiScope, ...ApiScope[]];
 
-const KEY_PREFIX = "nby_";
+const KEY_PREFIX = "vdo_";
 
 export interface ApiPrincipal {
   orgId: string;
@@ -69,10 +69,10 @@ export async function revokeApiKey(actor: Actor & { userId: string }, id: string
   await writeAudit({ orgId: actor.orgId, actorType: "USER", actorUserId: actor.userId, action: "apikey.revoke", entityType: "ApiKey", entityId: id });
 }
 
-/** Resolves `Authorization: Bearer nby_…`. Throws UNAUTHENTICATED for anything invalid. */
+/** Resolves `Authorization: Bearer vdo_…`. Throws UNAUTHENTICATED for anything invalid. */
 export async function authenticateApiKey(authorization: string | null): Promise<ApiPrincipal> {
   const match = /^Bearer\s+(\S+)$/i.exec(authorization ?? "");
-  if (!match || !match[1].startsWith(KEY_PREFIX)) throw new AppError("UNAUTHENTICATED", "Provide an API key as `Authorization: Bearer nby_…`.");
+  if (!match || !match[1].startsWith(KEY_PREFIX)) throw new AppError("UNAUTHENTICATED", "Provide an API key as `Authorization: Bearer vdo_…`.");
   const row = await prisma.apiKey.findUnique({ where: { hashedKey: sha256(match[1]) }, include: { organization: { select: { deletedAt: true, suspendedAt: true } } } });
   if (!row || row.revokedAt || row.organization.deletedAt || row.organization.suspendedAt) throw new AppError("UNAUTHENTICATED", "This API key is invalid or has been revoked.");
   if (row.expiresAt && row.expiresAt < new Date()) throw new AppError("UNAUTHENTICATED", "This API key has expired.");

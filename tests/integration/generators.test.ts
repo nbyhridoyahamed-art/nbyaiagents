@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { guessIntent } from "@/components/layout/ask-nby";
+import { guessIntent } from "@/components/layout/ask-desks";
 import { autoLayout } from "@/lib/workflows/auto-layout";
 import { generateWorkflowDraft } from "@/server/services/workflow-generator";
 import { createFixtureAgent, createFixtureOrg, resetDb } from "./helpers";
@@ -8,7 +8,7 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe("Ask NBY AI", () => {
+describe("Ask Virtual Desks", () => {
   it("guesses whether the person wants an employee or a workflow", () => {
     expect(guessIntent("Create a customer support employee who answers refund questions")).toBe("employee");
     expect(guessIntent("Whenever a new lead arrives, research it and email them")).toBe("workflow");

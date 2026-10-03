@@ -16,7 +16,7 @@ beforeEach(async () => {
 });
 
 async function admin() {
-  return prisma.user.create({ data: { email: `root-${Date.now()}@nby.test`, name: "Root", platformRole: "SUPER_ADMIN" } });
+  return prisma.user.create({ data: { email: `root-${Date.now()}@vdo.test`, name: "Root", platformRole: "SUPER_ADMIN" } });
 }
 
 describe("platform admin", () => {

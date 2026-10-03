@@ -14,7 +14,7 @@ import EmbeddedPostgres from "embedded-postgres";
 
 const port = Number(process.env.DEV_DB_PORT ?? 5433);
 const dataDir = path.resolve(".data/postgres");
-const databases = ["nby", "nby_test"];
+const databases = ["vdo", "vdo_test"];
 
 const recentLog: string[] = [];
 
@@ -79,7 +79,7 @@ async function main() {
     }
   }
   await client.end();
-  console.log(`[db] PostgreSQL ready on postgresql://postgres:***@localhost:${port}/nby`);
+  console.log(`[db] PostgreSQL ready on postgresql://postgres:***@localhost:${port}/vdo`);
 
   const shutdown = async () => {
     console.log("\n[db] stopping PostgreSQL…");

@@ -9,12 +9,12 @@ import { writeAudit } from "@/server/services/audit";
 
 /**
  * Inbound workflow webhooks (spec §46). A request is accepted when it carries a
- * valid signature (`X-NBY-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "t.body">`)
+ * valid signature (`X-VDO-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "t.body">`)
  * or a `workflows:run` API key for the same company. Signatures older than five
  * minutes are rejected so captured requests can't be replayed.
  */
 
-export const SIGNATURE_HEADER = "x-nby-signature";
+export const SIGNATURE_HEADER = "x-vdo-signature";
 const TOLERANCE_SECONDS = 300;
 const MAX_BODY_BYTES = 256 * 1024;
 
@@ -61,7 +61,7 @@ export async function receiveWebhook(req: WebhookRequest) {
       await writeAudit({ orgId: hook.orgId, actorType: "SYSTEM", action: "webhook.rejected", outcome: "DENIED", entityType: "Webhook", entityId: hook.id, ipAddress: req.ip, metadata: { reason: sig.reason } });
       throw new AppError(
         "UNAUTHENTICATED",
-        sig.reason === "expired" ? "The signature timestamp is too old. Sign each request when you send it." : "A valid X-NBY-Signature header or API key is required.",
+        sig.reason === "expired" ? "The signature timestamp is too old. Sign each request when you send it." : "A valid X-VDO-Signature header or API key is required.",
       );
     }
   }

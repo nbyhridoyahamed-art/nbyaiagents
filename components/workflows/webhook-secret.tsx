@@ -17,7 +17,7 @@ export function WebhookSecret({ workflowId, canManage }: { workflowId: string; c
   return (
     <div className="grid gap-1.5">
       <p className="text-[11px] text-text-muted">
-        Sign each request with <code className="font-mono">X-NBY-Signature: t=&lt;unix seconds&gt;,v1=&lt;hex HMAC-SHA256 of &quot;t.body&quot;&gt;</code>, or send a <code className="font-mono">workflows:run</code> API key. Add an{" "}
+        Sign each request with <code className="font-mono">X-VDO-Signature: t=&lt;unix seconds&gt;,v1=&lt;hex HMAC-SHA256 of &quot;t.body&quot;&gt;</code>, or send a <code className="font-mono">workflows:run</code> API key. Add an{" "}
         <code className="font-mono">Idempotency-Key</code> header so retries never run twice.
       </p>
       {canManage && (

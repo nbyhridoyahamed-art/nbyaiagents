@@ -53,7 +53,7 @@ describe("API keys", () => {
     expect(ok.status).toBe(200);
     expect((await ok.json()).data).toHaveLength(1);
     expect((await listAgents(req("/api/v1/agents"))).status).toBe(401);
-    expect((await listAgents(req("/api/v1/agents", { key: "nby_bogus_key" }))).status).toBe(401);
+    expect((await listAgents(req("/api/v1/agents", { key: "vdo_bogus_key" }))).status).toBe(401);
 
     const agent = await prisma.agent.findFirstOrThrow({ where: { orgId: org.id } });
     const denied = await runAgent(req(`/api/v1/agents/${agent.id}/run`, { method: "POST", key, body: JSON.stringify({ input: "Hi" }) }), params({ agentId: agent.id }));
@@ -112,15 +112,15 @@ describe("webhooks", () => {
     const send = (headers: Record<string, string>, b = body) => webhook(req(`/api/webhooks/${hook.key}`, { method: "POST", headers, body: b }), params({ key: hook.key }));
 
     expect((await send({})).status).toBe(401);
-    expect((await send({ "x-nby-signature": signWebhookBody("wrong-secret", body) })).status).toBe(401);
+    expect((await send({ "x-vdo-signature": signWebhookBody("wrong-secret", body) })).status).toBe(401);
     const old = Math.floor(Date.now() / 1000) - 3600;
-    expect((await send({ "x-nby-signature": signWebhookBody(secret, body, old) })).status).toBe(401);
+    expect((await send({ "x-vdo-signature": signWebhookBody(secret, body, old) })).status).toBe(401);
     // Signature over a different body doesn't validate a tampered payload.
-    expect((await send({ "x-nby-signature": signWebhookBody(secret, body) }, JSON.stringify({ name: "Mallory" }))).status).toBe(401);
+    expect((await send({ "x-vdo-signature": signWebhookBody(secret, body) }, JSON.stringify({ name: "Mallory" }))).status).toBe(401);
 
-    const ok = await send({ "x-nby-signature": signWebhookBody(secret, body), "idempotency-key": "d1" });
+    const ok = await send({ "x-vdo-signature": signWebhookBody(secret, body), "idempotency-key": "d1" });
     expect(ok.status).toBe(202);
-    const again = await send({ "x-nby-signature": signWebhookBody(secret, body), "idempotency-key": "d1" });
+    const again = await send({ "x-vdo-signature": signWebhookBody(secret, body), "idempotency-key": "d1" });
     expect((await again.json()).data.runId).toBe((await ok.json()).data.runId);
     await drainJobs();
     const run = await prisma.workflowRun.findFirstOrThrow({ where: { workflowId: hook.workflowId, mode: "LIVE" } });
@@ -128,7 +128,7 @@ describe("webhooks", () => {
     expect((await prisma.webhook.findUniqueOrThrow({ where: { id: hook.id } })).lastReceivedAt).not.toBeNull();
 
     expect((await webhook(req(`/api/webhooks/nope`, { method: "POST", body }), params({ key: "nope" }))).status).toBe(404);
-    const notJson = await send({ "x-nby-signature": signWebhookBody(secret, "[1,2]") }, "[1,2]");
+    const notJson = await send({ "x-vdo-signature": signWebhookBody(secret, "[1,2]") }, "[1,2]");
     expect(notJson.status).toBe(422);
   });
 

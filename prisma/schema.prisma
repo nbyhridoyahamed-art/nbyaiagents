@@ -1,8 +1,8 @@
-// NBY AI Agents — data model
+// Virtual Desks Online — data model
 //
 // Conventions
 // - IDs are prefixed + random (e.g. `agent_3f9c…`, `run_81ab…`) via the SQL function
-//   `nby_id(prefix)` created in the first migration. Prefixes make logs traceable.
+//   `vdo_id(prefix)` created in the first migration. Prefixes make logs traceable.
 // - Every organization-owned record carries `orgId`. Repositories always filter by it.
 // - `deletedAt` marks soft deletion where recovery / audit matters.
 
@@ -25,7 +25,7 @@ enum PlatformRole {
 }
 
 model User {
-  id              String       @id @default(dbgenerated("nby_id('usr'::text)"))
+  id              String       @id @default(dbgenerated("vdo_id('usr'::text)"))
   email           String       @unique
   name            String
   passwordHash    String?
@@ -47,7 +47,7 @@ model User {
 }
 
 model Session {
-  id                   String   @id @default(dbgenerated("nby_id('ses'::text)"))
+  id                   String   @id @default(dbgenerated("vdo_id('ses'::text)"))
   tokenHash            String   @unique
   userId               String
   activeOrganizationId String?
@@ -69,7 +69,7 @@ enum VerificationTokenType {
 }
 
 model VerificationToken {
-  id        String                @id @default(dbgenerated("nby_id('vt'::text)"))
+  id        String                @id @default(dbgenerated("vdo_id('vt'::text)"))
   userId    String
   type      VerificationTokenType
   tokenHash String                @unique
@@ -88,7 +88,7 @@ enum Plan {
 }
 
 model Organization {
-  id                    String    @id @default(dbgenerated("nby_id('org'::text)"))
+  id                    String    @id @default(dbgenerated("vdo_id('org'::text)"))
   name                  String
   slug                  String    @unique
   timezone              String    @default("UTC")
@@ -144,7 +144,7 @@ enum OrgRole {
 }
 
 model OrganizationMember {
-  id        String   @id @default(dbgenerated("nby_id('mem'::text)"))
+  id        String   @id @default(dbgenerated("vdo_id('mem'::text)"))
   orgId     String
   userId    String
   role      OrgRole  @default(MEMBER)
@@ -159,7 +159,7 @@ model OrganizationMember {
 }
 
 model Invitation {
-  id          String    @id @default(dbgenerated("nby_id('inv'::text)"))
+  id          String    @id @default(dbgenerated("vdo_id('inv'::text)"))
   orgId       String
   email       String
   role        OrgRole   @default(MEMBER)
@@ -177,7 +177,7 @@ model Invitation {
 }
 
 model Department {
-  id          String    @id @default(dbgenerated("nby_id('dept'::text)"))
+  id          String    @id @default(dbgenerated("vdo_id('dept'::text)"))
   orgId       String
   name        String
   description String?
@@ -227,7 +227,7 @@ enum Priority {
 }
 
 model Agent {
-  id               String         @id @default(dbgenerated("nby_id('agent'::text)"))
+  id               String         @id @default(dbgenerated("vdo_id('agent'::text)"))
   orgId            String
   departmentId     String?
   name             String
@@ -302,7 +302,7 @@ enum InstructionSection {
 }
 
 model AgentInstruction {
-  id        String             @id @default(dbgenerated("nby_id('ins'::text)"))
+  id        String             @id @default(dbgenerated("vdo_id('ins'::text)"))
   agentId   String
   section   InstructionSection
   content   String
@@ -323,7 +323,7 @@ enum VersionStatus {
 /// Immutable snapshot of an agent's full configuration at publish time.
 /// Runs always execute against a published snapshot, never the live draft.
 model AgentVersion {
-  id            String        @id @default(dbgenerated("nby_id('agv'::text)"))
+  id            String        @id @default(dbgenerated("vdo_id('agv'::text)"))
   orgId         String
   agentId       String
   version       Int
@@ -354,7 +354,7 @@ enum ProviderKind {
 
 /// Org-level AI provider configuration. API keys live in ToolCredential (encrypted).
 model AiProvider {
-  id           String       @id @default(dbgenerated("nby_id('aip'::text)"))
+  id           String       @id @default(dbgenerated("vdo_id('aip'::text)"))
   orgId        String
   kind         ProviderKind
   name         String
@@ -372,7 +372,7 @@ model AiProvider {
 }
 
 model AgentProviderConfig {
-  id               String        @id @default(dbgenerated("nby_id('apc'::text)"))
+  id               String        @id @default(dbgenerated("vdo_id('apc'::text)"))
   agentId          String        @unique
   provider         ProviderKind  @default(OFFLINE)
   model            String        @default("offline-demo")
@@ -391,7 +391,7 @@ enum MemoryScope {
 }
 
 model AgentMemory {
-  id             String      @id @default(dbgenerated("nby_id('amem'::text)"))
+  id             String      @id @default(dbgenerated("vdo_id('amem'::text)"))
   orgId          String
   agentId        String?
   scope          MemoryScope @default(LONG_TERM)
@@ -409,7 +409,7 @@ model AgentMemory {
 }
 
 model AgentDelegation {
-  id          String   @id @default(dbgenerated("nby_id('dlg'::text)"))
+  id          String   @id @default(dbgenerated("vdo_id('dlg'::text)"))
   orgId       String
   delegatorId String
   delegateId  String
@@ -423,7 +423,7 @@ model AgentDelegation {
 }
 
 model AgentWorkflow {
-  id         String   @id @default(dbgenerated("nby_id('awf'::text)"))
+  id         String   @id @default(dbgenerated("vdo_id('awf'::text)"))
   agentId    String
   workflowId String
   createdAt  DateTime @default(now())
@@ -444,7 +444,7 @@ enum KnowledgeVisibility {
 }
 
 model KnowledgeBase {
-  id          String              @id @default(dbgenerated("nby_id('kb'::text)"))
+  id          String              @id @default(dbgenerated("vdo_id('kb'::text)"))
   orgId       String
   name        String
   description String?
@@ -481,7 +481,7 @@ enum IndexStatus {
 }
 
 model KnowledgeDocument {
-  id              String              @id @default(dbgenerated("nby_id('doc'::text)"))
+  id              String              @id @default(dbgenerated("vdo_id('doc'::text)"))
   orgId           String
   knowledgeBaseId String
   title           String
@@ -514,7 +514,7 @@ model KnowledgeDocument {
 }
 
 model KnowledgeChunk {
-  id              String   @id @default(dbgenerated("nby_id('chk'::text)"))
+  id              String   @id @default(dbgenerated("vdo_id('chk'::text)"))
   orgId           String
   knowledgeBaseId String
   documentId      String
@@ -535,7 +535,7 @@ model KnowledgeChunk {
 
 /// Grants an agent or a whole department access to a knowledge collection.
 model KnowledgeAssignment {
-  id              String   @id @default(dbgenerated("nby_id('kas'::text)"))
+  id              String   @id @default(dbgenerated("vdo_id('kas'::text)"))
   orgId           String
   knowledgeBaseId String
   agentId         String?
@@ -569,7 +569,7 @@ enum ToolKind {
 }
 
 model Tool {
-  id            String    @id @default(dbgenerated("nby_id('tool'::text)"))
+  id            String    @id @default(dbgenerated("vdo_id('tool'::text)"))
   orgId         String
   key           String
   name          String
@@ -610,7 +610,7 @@ enum PermissionEffect {
 
 /// Assignment of a tool to an agent, with the agent-level permission for that action.
 model AgentTool {
-  id        String           @id @default(dbgenerated("nby_id('agt'::text)"))
+  id        String           @id @default(dbgenerated("vdo_id('agt'::text)"))
   orgId     String
   agentId   String
   toolId    String
@@ -636,7 +636,7 @@ enum CredentialType {
 /// Secrets are AES-256-GCM encrypted server-side. Plaintext is never returned to
 /// the browser, never logged and never placed in model context.
 model ToolCredential {
-  id             String         @id @default(dbgenerated("nby_id('cred'::text)"))
+  id             String         @id @default(dbgenerated("vdo_id('cred'::text)"))
   orgId          String
   name           String
   type           CredentialType
@@ -666,7 +666,7 @@ enum ConnectionStatus {
 }
 
 model IntegrationConnection {
-  id             String           @id @default(dbgenerated("nby_id('conn'::text)"))
+  id             String           @id @default(dbgenerated("vdo_id('conn'::text)"))
   orgId          String
   integrationKey String
   name           String
@@ -689,7 +689,7 @@ model IntegrationConnection {
 /// Records held by simulated (mock) integrations — e.g. Mock CRM contacts and the
 /// Mock Email outbox. Nothing here ever leaves the system.
 model MockRecord {
-  id             String   @id @default(dbgenerated("nby_id('mock'::text)"))
+  id             String   @id @default(dbgenerated("vdo_id('mock'::text)"))
   orgId          String
   integrationKey String
   collection     String
@@ -713,7 +713,7 @@ enum PolicyScope {
 /// Business rule for AI behaviour. `enforcement` makes the rule machine-enforced
 /// at runtime (not just prompt text), e.g. {"type":"deny_capability","capability":"financial"}.
 model Policy {
-  id           String      @id @default(dbgenerated("nby_id('pol'::text)"))
+  id           String      @id @default(dbgenerated("vdo_id('pol'::text)"))
   orgId        String
   scope        PolicyScope @default(ORGANIZATION)
   departmentId String?
@@ -734,7 +734,7 @@ model Policy {
 
 /// Conditional approval rules: IF <conditions> THEN <effect>.
 model ApprovalPolicy {
-  id           String           @id @default(dbgenerated("nby_id('apol'::text)"))
+  id           String           @id @default(dbgenerated("vdo_id('apol'::text)"))
   orgId        String
   name         String
   description  String?
@@ -773,7 +773,7 @@ enum ApprovalStatus {
 }
 
 model Approval {
-  id             String         @id @default(dbgenerated("nby_id('apr'::text)"))
+  id             String         @id @default(dbgenerated("vdo_id('apr'::text)"))
   orgId          String
   kind           ApprovalKind
   status         ApprovalStatus @default(PENDING)
@@ -828,7 +828,7 @@ enum ExecutionMode {
 }
 
 model Task {
-  id               String        @id @default(dbgenerated("nby_id('task'::text)"))
+  id               String        @id @default(dbgenerated("vdo_id('task'::text)"))
   orgId            String
   title            String
   description      String?
@@ -872,7 +872,7 @@ model Task {
 }
 
 model TaskComment {
-  id            String   @id @default(dbgenerated("nby_id('tcm'::text)"))
+  id            String   @id @default(dbgenerated("vdo_id('tcm'::text)"))
   orgId         String
   taskId        String
   authorUserId  String?
@@ -897,7 +897,7 @@ enum RunStatus {
 
 /// One execution of an AI employee (for a task, chat message, workflow node or delegation).
 model AgentRun {
-  id             String        @id @default(dbgenerated("nby_id('run'::text)"))
+  id             String        @id @default(dbgenerated("vdo_id('run'::text)"))
   orgId          String
   agentId        String
   agentVersion   Int?
@@ -963,7 +963,7 @@ enum StepStatus {
 
 /// Operational trace of what an agent did. Never contains hidden model reasoning.
 model AgentRunStep {
-  id         String      @id @default(dbgenerated("nby_id('ars'::text)"))
+  id         String      @id @default(dbgenerated("vdo_id('ars'::text)"))
   orgId      String
   runId      String
   sequence   Int
@@ -991,7 +991,7 @@ model AgentRunStep {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Conversation {
-  id            String   @id @default(dbgenerated("nby_id('conv'::text)"))
+  id            String   @id @default(dbgenerated("vdo_id('conv'::text)"))
   orgId         String
   agentId       String
   userId        String
@@ -1014,7 +1014,7 @@ enum MessageRole {
 }
 
 model Message {
-  id             String      @id @default(dbgenerated("nby_id('msg'::text)"))
+  id             String      @id @default(dbgenerated("vdo_id('msg'::text)"))
   orgId          String
   conversationId String
   role           MessageRole
@@ -1048,7 +1048,7 @@ enum TriggerType {
 }
 
 model Workflow {
-  id               String         @id @default(dbgenerated("nby_id('wf'::text)"))
+  id               String         @id @default(dbgenerated("vdo_id('wf'::text)"))
   orgId            String
   name             String
   description      String?
@@ -1076,7 +1076,7 @@ model Workflow {
 }
 
 model WorkflowVersion {
-  id          String        @id @default(dbgenerated("nby_id('wfv'::text)"))
+  id          String        @id @default(dbgenerated("vdo_id('wfv'::text)"))
   orgId       String
   workflowId  String
   version     Int
@@ -1100,7 +1100,7 @@ model WorkflowVersion {
 }
 
 model WorkflowNode {
-  id        String @id @default(dbgenerated("nby_id('wfn'::text)"))
+  id        String @id @default(dbgenerated("vdo_id('wfn'::text)"))
   versionId String
   key       String
   type      String
@@ -1115,7 +1115,7 @@ model WorkflowNode {
 }
 
 model WorkflowEdge {
-  id           String  @id @default(dbgenerated("nby_id('wfe'::text)"))
+  id           String  @id @default(dbgenerated("vdo_id('wfe'::text)"))
   versionId    String
   key          String
   source       String
@@ -1129,7 +1129,7 @@ model WorkflowEdge {
 }
 
 model WorkflowRun {
-  id              String        @id @default(dbgenerated("nby_id('wfr'::text)"))
+  id              String        @id @default(dbgenerated("vdo_id('wfr'::text)"))
   orgId           String
   workflowId      String
   versionId       String
@@ -1168,7 +1168,7 @@ model WorkflowRun {
 }
 
 model WorkflowRunStep {
-  id          String     @id @default(dbgenerated("nby_id('wfs'::text)"))
+  id          String     @id @default(dbgenerated("vdo_id('wfs'::text)"))
   orgId       String
   runId       String
   nodeKey     String
@@ -1194,7 +1194,7 @@ model WorkflowRunStep {
 }
 
 model Schedule {
-  id         String    @id @default(dbgenerated("nby_id('sch'::text)"))
+  id         String    @id @default(dbgenerated("vdo_id('sch'::text)"))
   orgId      String
   workflowId String?
   agentId    String?
@@ -1216,7 +1216,7 @@ model Schedule {
 }
 
 model Webhook {
-  id             String    @id @default(dbgenerated("nby_id('whk'::text)"))
+  id             String    @id @default(dbgenerated("vdo_id('whk'::text)"))
   orgId          String
   workflowId     String
   key            String    @unique
@@ -1257,7 +1257,7 @@ enum ActivityCategory {
 
 /// Human-readable operational feed ("Sarah completed lead qualification").
 model ActivityLog {
-  id           String           @id @default(dbgenerated("nby_id('act'::text)"))
+  id           String           @id @default(dbgenerated("vdo_id('act'::text)"))
   orgId        String
   category     ActivityCategory
   actorType    ActorType
@@ -1285,7 +1285,7 @@ enum AuditOutcome {
 
 /// Immutable security/compliance log. Metadata is redacted before insert.
 model AuditLog {
-  id            String       @id @default(dbgenerated("nby_id('aud'::text)"))
+  id            String       @id @default(dbgenerated("vdo_id('aud'::text)"))
   orgId         String?
   actorType     ActorType
   actorUserId   String?
@@ -1310,7 +1310,7 @@ model AuditLog {
 }
 
 model Notification {
-  id        String    @id @default(dbgenerated("nby_id('ntf'::text)"))
+  id        String    @id @default(dbgenerated("vdo_id('ntf'::text)"))
   orgId     String
   userId    String
   type      String
@@ -1337,7 +1337,7 @@ enum UsageKind {
 }
 
 model UsageRecord {
-  id           String        @id @default(dbgenerated("nby_id('use'::text)"))
+  id           String        @id @default(dbgenerated("vdo_id('use'::text)"))
   orgId        String
   kind         UsageKind
   agentId      String?
@@ -1360,7 +1360,7 @@ model UsageRecord {
 }
 
 model ApiKey {
-  id          String    @id @default(dbgenerated("nby_id('key'::text)"))
+  id          String    @id @default(dbgenerated("vdo_id('key'::text)"))
   orgId       String
   name        String
   prefix      String
@@ -1382,7 +1382,7 @@ model ApiKey {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model StoredFile {
-  id          String   @id @default(dbgenerated("nby_id('file'::text)"))
+  id          String   @id @default(dbgenerated("vdo_id('file'::text)"))
   orgId       String
   storageKey  String   @unique
   fileName    String
@@ -1405,7 +1405,7 @@ enum TemplateKind {
 }
 
 model Template {
-  id          String       @id @default(dbgenerated("nby_id('tpl'::text)"))
+  id          String       @id @default(dbgenerated("vdo_id('tpl'::text)"))
   orgId       String?
   kind        TemplateKind
   key         String
@@ -1434,7 +1434,7 @@ enum JobStatus {
 
 /// Durable job queue used when Redis/BullMQ is not configured.
 model Job {
-  id          String    @id @default(dbgenerated("nby_id('job'::text)"))
+  id          String    @id @default(dbgenerated("vdo_id('job'::text)"))
   queue       String
   name        String
   payload     Json
@@ -1456,7 +1456,7 @@ model Job {
 
 /// Guards external side-effects against duplicate execution (timeouts, retries).
 model IdempotencyRecord {
-  id        String   @id @default(dbgenerated("nby_id('idem'::text)"))
+  id        String   @id @default(dbgenerated("vdo_id('idem'::text)"))
   orgId     String
   key       String
   scope     String
@@ -1483,7 +1483,7 @@ enum EmailStatus {
 
 /// Transactional email outbox (verification, invitations, approvals...).
 model EmailMessage {
-  id        String      @id @default(dbgenerated("nby_id('eml'::text)"))
+  id        String      @id @default(dbgenerated("vdo_id('eml'::text)"))
   orgId     String?
   to        String
   subject   String

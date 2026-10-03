@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 // Tests always run against the dedicated test database and never call real AI providers.
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/nby_test?schema=public";
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/vdo_test?schema=public";
 process.env.ANTHROPIC_API_KEY = "";
 process.env.OPENAI_API_KEY = "";
 process.env.GOOGLE_API_KEY = "";

@@ -114,7 +114,7 @@ describe("human takeover", () => {
     const { org, user, actor } = await createFixtureOrg();
     const agent = await createFixtureAgent(actor, {});
     restore = useScriptedModel([
-      () => [call("nby_ask_human", { question: "Which region?" }, "q1")],
+      () => [call("vdo_ask_human", { question: "Which region?" }, "q1")],
       (req) => {
         expect(JSON.stringify(req.messages[req.messages.length - 1])).toContain("EMEA");
         return [text("Reporting on EMEA.")];

@@ -121,7 +121,7 @@ export async function deleteTool(actor: Actor, toolId: string) {
 
 /**
  * Admin-run tool test (not an agent action). Built-in mock tools run for real
- * (their effects stay inside NBY); custom tools call the real API — so non-GET
+ * (their effects stay inside Virtual Desks); custom tools call the real API — so non-GET
  * tests can have real side effects and the UI warns about that.
  */
 export async function testTool(actor: Actor, toolId: string, input: unknown, mode: "LIVE" | "SIMULATION"): Promise<ToolResult & { latencyMs: number }> {

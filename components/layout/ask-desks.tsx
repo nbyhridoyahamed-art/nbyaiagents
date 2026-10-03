@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-export const ASK_EVENT = "nby:ask";
+export const ASK_EVENT = "vdo:ask";
 
 const WORKFLOW_WORDS = /\b(workflow|automat\w*|whenever|every (day|week|monday|morning)|when (a|an|i|we|someone)|trigger|pipeline|then|after that|step)\b/i;
 const EMPLOYEE_WORDS = /\b(employee|hire|assistant|agent|specialist|manager|representative|writer|recruiter|coordinator|analyst)\b/i;
@@ -26,10 +26,10 @@ export function guessIntent(text: string): "workflow" | "employee" | null {
 const EXAMPLES = ["Create a customer support employee who answers from our refund policy.", "Build a lead generation workflow that researches new leads and asks me before emailing them."];
 
 /**
- * "Ask NBY AI" (spec §102): describe what you want; it drafts an employee or a
+ * "Ask Virtual Desks" (spec §102): describe what you want; it drafts an employee or a
  * workflow for review. It never publishes anything — you land on a draft.
  */
-export function AskNby({ canHire, canBuild }: { canHire: boolean; canBuild: boolean }) {
+export function AskDesks({ canHire, canBuild }: { canHire: boolean; canBuild: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);

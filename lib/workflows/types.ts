@@ -92,7 +92,7 @@ export const NODE_CONFIG_SCHEMAS = {
 export type NodeType = keyof typeof NODE_CONFIG_SCHEMAS;
 export const NODE_TYPES = Object.keys(NODE_CONFIG_SCHEMAS) as NodeType[];
 
-export type NodeCategory = "Triggers" | "AI" | "Agents" | "Tools" | "Logic" | "Human" | "Data";
+export type NodeCategory = "Triggers" | "AI" | "Employees" | "Tools" | "Logic" | "Human" | "Data";
 
 export interface NodeMeta {
   type: NodeType;
@@ -121,7 +121,7 @@ export const NODE_CATALOG: NodeMeta[] = [
   { type: "ai.research", label: "Research", category: "AI", description: "An employee researches a topic with their tools.", icon: "search", handles: ["out"], errorHandle: true },
   { type: "ai.decision", label: "Decision", category: "AI", description: "AI chooses a path; branch on the result.", icon: "git-fork", handles: ["out"], errorHandle: true },
 
-  { type: "agent.run", label: "Run AI Employee", category: "Agents", description: "Hand this step to an employee (their knowledge, tools and permissions apply).", icon: "user-round", handles: ["out"], errorHandle: true },
+  { type: "agent.run", label: "Run AI Employee", category: "Employees", description: "Hand this step to an employee (their knowledge, tools and permissions apply).", icon: "user-round", handles: ["out"], errorHandle: true },
 
   { type: "tool.call", label: "Tool", category: "Tools", description: "Call a tool or integration (permission-checked).", icon: "wrench", handles: ["out"], errorHandle: true },
 

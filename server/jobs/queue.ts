@@ -49,7 +49,7 @@ async function getBullQueue() {
   if (!bullQueue) {
     const { Queue } = await import("bullmq");
     const { default: IORedis } = await import("ioredis");
-    bullQueue = new Queue("nby", { connection: new IORedis(process.env.REDIS_URL!, { maxRetriesPerRequest: null }) });
+    bullQueue = new Queue("vdo", { connection: new IORedis(process.env.REDIS_URL!, { maxRetriesPerRequest: null }) });
   }
   return bullQueue;
 }
@@ -163,7 +163,7 @@ export async function startWorker(opts: { concurrency?: number; pollMs?: number 
     const { Worker } = await import("bullmq");
     const { default: IORedis } = await import("ioredis");
     new Worker(
-      "nby",
+      "vdo",
       async (job) => {
         const handler = handlers.get(job.name as JobName);
         if (!handler) throw new Error(`No handler for ${job.name}`);

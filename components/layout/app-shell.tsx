@@ -7,12 +7,12 @@ import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
 import { BottomNav, MobileDrawer } from "./mobile-nav";
 import { CommandPalette } from "./command-palette";
-import { AskNby } from "./ask-nby";
+import { AskDesks } from "./ask-desks";
 import { roleHas } from "@/lib/permissions/rbac";
 import { ShellProvider, type ShellData } from "./shell-context";
 import { BreadcrumbProvider } from "./breadcrumbs";
 
-const COLLAPSE_KEY = "nby-sidebar-collapsed";
+const COLLAPSE_KEY = "vdo-sidebar-collapsed";
 
 export function AppShell({ data, children }: { data: ShellData; children: ReactNode }) {
   const [collapsedFlag, setCollapsedFlag] = useLocalStorage(COLLAPSE_KEY, "0");
@@ -43,7 +43,7 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
         </div>
         <BottomNav onMore={() => setDrawerOpen(true)} />
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-        <AskNby canHire={roleHas(data.role, "agents:write")} canBuild={roleHas(data.role, "workflows:write")} />
+        <AskDesks canHire={roleHas(data.role, "agents:write")} canBuild={roleHas(data.role, "workflows:write")} />
       </BreadcrumbProvider>
     </ShellProvider>
   );

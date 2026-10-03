@@ -13,7 +13,7 @@ async function waitForText(page: Page, text: RegExp, timeoutMs = 60_000) {
   await expect(page.getByText(text).first()).toBeVisible({ timeout: timeoutMs });
 }
 
-test("NBY acceptance scenario", async ({ page }) => {
+test("Virtual Desks acceptance scenario", async ({ page }) => {
   test.setTimeout(420_000);
 
   // 1–2. Sign up and create the company.
@@ -78,7 +78,7 @@ test("NBY acceptance scenario", async ({ page }) => {
   await expect(page).toHaveURL(/\/knowledge\/kb_/, { timeout: 20_000 });
   await page.getByLabel(/choose files to upload/i).setInputFiles([
     { name: "Sales SOP.txt", mimeType: "text/plain", buffer: Buffer.from("Sales SOP. Qualify leads with a score from 0 to 100. Qualified leads score 70 or more. Every outbound email must be approved by a manager.") },
-    { name: "Product Catalog.txt", mimeType: "text/plain", buffer: Buffer.from("Product catalog. NBY Robot Arm: industrial arm for small factories. NBY Vision: camera kit for quality control.") },
+    { name: "Product Catalog.txt", mimeType: "text/plain", buffer: Buffer.from("Product catalog. Virtual Desks Robot Arm: industrial arm for small factories. Virtual Desks Vision: camera kit for quality control.") },
     { name: "Pricing.txt", mimeType: "text/plain", buffer: Buffer.from("Pricing. Robot Arm costs $12,000. Vision kit costs $2,500. Volume discounts only with approval.") },
   ]);
   for (const doc of ["Sales SOP", "Product Catalog", "Pricing"]) await expect(page.getByText(new RegExp(doc)).first()).toBeVisible({ timeout: 30_000 });

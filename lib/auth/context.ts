@@ -10,7 +10,7 @@ import { roleHas, type Permission } from "@/lib/permissions/rbac";
 import { SESSION_TTL_MS, validateSessionToken } from "@/server/services/auth";
 import type { OrgRole } from "@/lib/generated/prisma/enums";
 
-export const SESSION_COOKIE = "nby_session";
+export const SESSION_COOKIE = "vdo_session";
 
 export async function setSessionCookie(token: string) {
   const store = await cookies();

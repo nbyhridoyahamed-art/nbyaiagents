@@ -2,9 +2,9 @@ import path from "node:path";
 
 /** End-to-end tests run against their own database, build and mailbox — never the dev data. */
 function databaseUrl() {
-  const base = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/nby?schema=public";
+  const base = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5433/vdo?schema=public";
   const u = new URL(base);
-  u.pathname = "/nby_e2e";
+  u.pathname = "/vdo_e2e";
   return u.toString();
 }
 

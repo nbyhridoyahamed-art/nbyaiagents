@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 import { publishWorkflowAction, runWorkflowAction, saveDraftAction, setWorkflowPausedAction, simulateWorkflowAction } from "@/app/(app)/workflows/actions";
 
 const nodeTypes = { step: FlowNodeView };
-const CATEGORIES: NodeCategory[] = ["Triggers", "AI", "Agents", "Tools", "Logic", "Human", "Data"];
+const CATEGORIES: NodeCategory[] = ["Triggers", "AI", "Employees", "Tools", "Logic", "Human", "Data"];
 type RunStatus = "QUEUED" | "RUNNING" | "WAITING" | "AWAITING_APPROVAL" | "COMPLETED" | "FAILED" | "CANCELLED";
 
 function toFlow(graph: WorkflowGraph): { nodes: FlowNode[]; edges: Edge[] } {
@@ -206,7 +206,7 @@ function EditorInner({ workflow, graph, settings: initialSettings, options, init
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const type = e.dataTransfer.getData("application/nby-node") as NodeType;
+      const type = e.dataTransfer.getData("application/vdo-node") as NodeType;
       if (!type) return;
       addNode(type, flow.screenToFlowPosition({ x: e.clientX - 110, y: e.clientY - 30 }));
     },
@@ -368,7 +368,7 @@ function EditorInner({ workflow, graph, settings: initialSettings, options, init
                           type="button"
                           draggable
                           onDragStart={(e) => {
-                            e.dataTransfer.setData("application/nby-node", n.type);
+                            e.dataTransfer.setData("application/vdo-node", n.type);
                             e.dataTransfer.effectAllowed = "move";
                           }}
                           onClick={() => addNode(n.type)}
