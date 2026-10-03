@@ -1,4 +1,4 @@
-# Deploying NBY AI Agents on Railway
+# Deploying Virtual Desks Online on Railway
 
 This guide takes the app from this repository to a live, HTTPS site on [Railway](https://railway.com), with a PostgreSQL database, persistent file storage and working background jobs.
 
@@ -63,7 +63,7 @@ Expect about 30–45 minutes the first time.
   - Move to **Pro** when paying customers depend on the service. Pro has more storage, higher availability targets, longer logs and support.
 - A **domain name** you control, e.g. `app.yourdomain.com`. Optional at first, because Railway gives you a free `*.up.railway.app` address.
 - A **Resend** account for transactional email (verification, password reset, invites, approvals).
-- API keys for at least one **AI provider** (Anthropic, OpenAI, Google or an OpenAI-compatible endpoint). Without one, agents run on the clearly labelled *Offline demo model*.
+- API keys for at least one **AI provider** (Anthropic, OpenAI, Google or an OpenAI-compatible endpoint). Without one, employees run on the clearly labelled *Offline demo model*.
 - **Node.js ≥ 20.9** on your own computer, only for generating secrets below.
 
 ## 3. Files in this repo that Railway uses
@@ -81,15 +81,15 @@ Expect about 30–45 minutes the first time.
 
 The project is a local git repository with no remote yet.
 
-1. On GitHub, create a new **private** repository, e.g. `nby-ai-agents`. Don't add a README or .gitignore, because the repo already has both.
-2. Push the code. The work is on the `feat/nby-ai-agents-v1` branch. Railway deploys one branch, so either merge it into `master`/`main` first or deploy that branch directly.
+1. On GitHub, create a new **private** repository, e.g. `virtual-desks-online`. Don't add a README or .gitignore, because the repo already has both.
+2. Push the code. The work is on the `main` branch. Railway deploys one branch, so either merge it into `master`/`main` first or deploy that branch directly.
 
 ```bash
-git remote add origin https://github.com/<you>/nby-ai-agents.git
+git remote add origin https://github.com/<you>/virtual-desks-online.git
 ```
 
 ```bash
-git push -u origin feat/nby-ai-agents-v1
+git push -u origin main
 ```
 
 3. Check on GitHub that **`.env` and `.data/` are not in the repository.** They are git-ignored, but confirm anyway, since `.env` holds your local secrets.
@@ -105,9 +105,9 @@ git push -u origin feat/nby-ai-agents-v1
 
 ## Step 3 — Add the app service
 
-1. In the same project, click **Create → GitHub Repo**. Authorise Railway to read your GitHub account if asked, then pick `nby-ai-agents`.
+1. In the same project, click **Create → GitHub Repo**. Authorise Railway to read your GitHub account if asked, then pick `virtual-desks-online`.
 2. Open the new service → **Settings**:
-   - **Source → Branch:** choose the branch you pushed (e.g. `feat/nby-ai-agents-v1`, or `main` after merging).
+   - **Source → Branch:** choose the branch you pushed (e.g. `main`, or `main` after merging).
    - **Build:** leave the builder on **Railpack** and the build command empty. Railpack runs `npm run build` by default.
    - **Deploy → Pre-deploy step:** set it to `npm run db:deploy`, which runs database migrations before each release.
    - **Deploy → Start command:** leave it empty. Railpack runs `npm start` by default.
@@ -165,7 +165,7 @@ STORAGE_LOCAL_DIR="/data/storage"
 # Email (see Step 9; "console" only logs messages and delivers nothing)
 EMAIL_PROVIDER="resend"
 RESEND_API_KEY="<your Resend API key>"
-EMAIL_FROM="NBY AI Agents <no-reply@yourdomain.com>"
+EMAIL_FROM="Virtual Desks Online <no-reply@yourdomain.com>"
 
 # AI providers: set at least one; leave the others out
 ANTHROPIC_API_KEY=""
@@ -257,7 +257,7 @@ The production database starts empty. There's no demo data and no demo admin: `n
 
 1. In Resend, add and **verify your sending domain**. Resend gives you DNS records (SPF/DKIM) to add at your DNS provider.
 2. Create an API key and set it as `RESEND_API_KEY`.
-3. Set `EMAIL_FROM` to an address on that verified domain, e.g. `NBY AI Agents <no-reply@yourdomain.com>`.
+3. Set `EMAIL_FROM` to an address on that verified domain, e.g. `Virtual Desks Online <no-reply@yourdomain.com>`.
 4. Redeploy, then test with **Forgot password** on your own account.
 
 Email failures never break the request that triggered them. They're logged as `[email] send failed` in the app logs.
@@ -304,13 +304,13 @@ There are two things to protect: the **database** and the **volume** (uploaded f
    2. Run the following from any machine with PostgreSQL client tools, and store the file somewhere safe (it contains all customer data):
 
    ```bash
-   pg_dump "<DATABASE_PUBLIC_URL>" --format=custom --file=nby-backup.dump
+   pg_dump "<DATABASE_PUBLIC_URL>" --format=custom --file=vdo-backup.dump
    ```
 
    To restore into an empty database:
 
    ```bash
-   pg_restore --no-owner --dbname="<DATABASE_PUBLIC_URL>" nby-backup.dump
+   pg_restore --no-owner --dbname="<DATABASE_PUBLIC_URL>" vdo-backup.dump
    ```
 
 3. **Encryption key.**
@@ -342,7 +342,7 @@ There are two things to protect: the **database** and the **volume** (uploaded f
 | `EACCES: permission denied` under `/data` | The container user can't write to the volume. Add the variable `RAILWAY_RUN_UID=0` and redeploy. |
 | Tasks sit in "queued" or schedules don't fire | Check each of these:<br>• `EMBEDDED_WORKER` isn't set to `false`.<br>• Sleeping isn't enabled on the service.<br>• The deploy logs show no worker errors at startup. |
 | Everyone seems to share one rate limit (e.g. sign-in "too many attempts" for unrelated users) | `TRUSTED_PROXY_HOPS` doesn't match the proxy chain. Use `1` with Railway's edge alone. If you add another proxy that appends `X-Forwarded-For` (e.g. Cloudflare in proxied mode), use `2`. |
-| Agents answer as "Offline demo model" | No AI provider key is set, or the key is invalid. Add one and redeploy. |
+| Employees answer as "Offline demo model" | No AI provider key is set, or the key is invalid. Add one and redeploy. |
 | `OPENAI_COMPATIBLE_BASE_URL` requests blocked | For SSRF protection, the endpoint must resolve to a public address. Private or internal addresses are rejected. |
 
 Logs are in each service's **Deployments → View logs**, or on the command line:

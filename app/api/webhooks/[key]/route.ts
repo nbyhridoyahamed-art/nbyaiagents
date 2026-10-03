@@ -6,8 +6,8 @@ import { clientIp } from "@/lib/security/client-ip";
 
 /**
  * POST /api/webhooks/{key} — start a published workflow from another system.
- * Authenticate with `X-NBY-Signature` (HMAC) or `Authorization: Bearer <API key>`.
- * Send `Idempotency-Key` (or `X-NBY-Delivery-Id`) so retries never start a second run.
+ * Authenticate with `X-VDO-Signature` (HMAC) or `Authorization: Bearer <API key>`.
+ * Send `Idempotency-Key` (or `X-VDO-Delivery-Id`) so retries never start a second run.
  */
 export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[key]">) {
   const requestId = `req_${randomToken(9)}`;
@@ -20,7 +20,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/webhooks/[k
       rawBody: await request.text(),
       signature: request.headers.get(SIGNATURE_HEADER),
       authorization: request.headers.get("authorization"),
-      deliveryId: request.headers.get("idempotency-key") ?? request.headers.get("x-nby-delivery-id"),
+      deliveryId: request.headers.get("idempotency-key") ?? request.headers.get("x-vdo-delivery-id"),
       ip: clientIp(request.headers) ?? "unknown",
     });
     return NextResponse.json({ data: { runId: res.runId, status: res.status.toLowerCase() } }, { status: 202, headers: { "X-Request-Id": requestId } });

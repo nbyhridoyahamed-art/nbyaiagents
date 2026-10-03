@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
  * marker are ever removed by `removeDemoHistory`, so real work done inside the
  * demo workspace is never touched.
  */
-export const DEMO_MARK = "nby-demo-seed";
+export const DEMO_MARK = "vdo-demo-seed";
 export const DEMO_TASK_INPUTS = { demoSeed: DEMO_MARK } as const;
 export const DEMO_ACTIVITY_ENTITY = "DemoSeed";
 export const DEMO_USAGE_MODEL = "demo-seed";

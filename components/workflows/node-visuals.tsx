@@ -69,7 +69,7 @@ export const NODE_ICONS: Record<string, LucideIcon> = {
 export const CATEGORY_STYLES: Record<NodeCategory, { accent: string; soft: string }> = {
   Triggers: { accent: "#12B76A", soft: "color-mix(in oklab, #12B76A 14%, transparent)" },
   AI: { accent: "#7C5CFC", soft: "color-mix(in oklab, #7C5CFC 14%, transparent)" },
-  Agents: { accent: "#5B5FEF", soft: "color-mix(in oklab, #5B5FEF 14%, transparent)" },
+  Employees: { accent: "#5B5FEF", soft: "color-mix(in oklab, #5B5FEF 14%, transparent)" },
   Tools: { accent: "#2E90FA", soft: "color-mix(in oklab, #2E90FA 14%, transparent)" },
   Logic: { accent: "#F79009", soft: "color-mix(in oklab, #F79009 14%, transparent)" },
   Human: { accent: "#DD2590", soft: "color-mix(in oklab, #DD2590 14%, transparent)" },

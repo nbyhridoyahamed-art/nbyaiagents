@@ -39,7 +39,7 @@ export default async function RunPage(props: PageProps<"/runs/[id]">) {
       <BreadcrumbLabel segment={run.id} label={run.id} />
       {live && <RunLiveRefresher />}
       <PageHeader
-        eyebrow="Agent run"
+        eyebrow="Employee run"
         title={
           <span className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-[22px]">{run.id}</span>

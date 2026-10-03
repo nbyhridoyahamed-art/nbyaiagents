@@ -10,7 +10,7 @@ const PUBLIC_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-passwo
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const isPublic = pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  if (!isPublic && !request.cookies.has("nby_session")) {
+  if (!isPublic && !request.cookies.has("vdo_session")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname + search)}`;

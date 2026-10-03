@@ -9,8 +9,8 @@ export default async function globalSetup() {
   admin.pathname = "/postgres";
   const client = new pg.Client({ connectionString: admin.toString() });
   await client.connect();
-  const exists = await client.query("SELECT 1 FROM pg_database WHERE datname = 'nby_e2e'");
-  if (!exists.rowCount) await client.query(`CREATE DATABASE nby_e2e ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0`);
+  const exists = await client.query("SELECT 1 FROM pg_database WHERE datname = 'vdo_e2e'");
+  if (!exists.rowCount) await client.query(`CREATE DATABASE vdo_e2e ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' TEMPLATE template0`);
   await client.end();
 
   execSync("npx prisma migrate deploy", { stdio: "inherit", env: { ...process.env, DATABASE_URL: E2E.databaseUrl } });

@@ -1,5 +1,5 @@
 /**
- * Development seed: "NBY Demo Company" (spec §127–128).
+ * Development seed: "Virtual Desks Demo Company" (spec §127–128).
  *
  *   npm run db:seed              # set up the demo workspace (safe to re-run)
  *   npm run db:seed -- --reset   # also rebuild the generated demo history
@@ -556,7 +556,7 @@ async function createHistory(orgId: string, timeZone: string, agents: Record<str
 async function main() {
   const started = new Date();
   registerAllJobHandlers();
-  console.log("Seeding NBY Demo Company…");
+  console.log("Seeding Virtual Desks Demo Company…");
   const { user, orgId, email } = await ensureDemoAdmin();
   const actor = userActor(orgId, user.id);
   const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
@@ -568,7 +568,7 @@ async function main() {
   }
   await prisma.organization.update({
     where: { id: orgId },
-    data: { isDemo: true, industry: org.industry ?? "SaaS / Software", monthlyAiBudgetUsd: 100, description: org.description ?? "Demo workspace for exploring NBY AI Agents." },
+    data: { isDemo: true, industry: org.industry ?? "SaaS / Software", monthlyAiBudgetUsd: 100, description: org.description ?? "Demo workspace for exploring Virtual Desks Online." },
   });
 
   const departments = await ensureDepartments(actor);

@@ -105,7 +105,7 @@ export function CollectionView({
                     {d.title}
                   </Link>
                   <p className="truncate text-xs text-text-muted">
-                    {d.fileName ?? d.sourceUrl ?? "Written in NBY"}
+                    {d.fileName ?? d.sourceUrl ?? "Written in Virtual Desks"}
                     {d.status === "INDEXED" && ` · ${d.chunkCount} chunks${d.pageCount ? ` · ${d.pageCount} pages` : ""}`} · {formatDistanceToNow(new Date(d.updatedAt), { addSuffix: true })}
                   </p>
                   {d.error && (

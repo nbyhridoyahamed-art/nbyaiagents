@@ -6,11 +6,11 @@ import type { AgentSnapshot } from "@/lib/agents/snapshot";
  * External actions always go through the tool registry + permission engine.
  */
 export const PLATFORM_TOOL_NAMES = {
-  searchKnowledge: "nby_search_knowledge",
-  remember: "nby_remember",
-  askHuman: "nby_ask_human",
-  escalate: "nby_escalate",
-  delegate: "nby_delegate",
+  searchKnowledge: "vdo_search_knowledge",
+  remember: "vdo_remember",
+  askHuman: "vdo_ask_human",
+  escalate: "vdo_escalate",
+  delegate: "vdo_delegate",
 } as const;
 
 export function platformToolDefinitions(snapshot: AgentSnapshot, opts: { hasKnowledge: boolean; allowQuestions: boolean; delegates: { id: string; name: string; jobTitle: string }[] }): AIToolDefinition[] {

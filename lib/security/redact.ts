@@ -10,7 +10,7 @@ const SENSITIVE_VALUE_PATTERNS: RegExp[] = [
   /\bBasic\s+[A-Za-z0-9+/=]{8,}/gi,
   /\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}/g, // OpenAI / Anthropic style keys
   /\bAIza[0-9A-Za-z_-]{20,}/g, // Google API keys
-  /\bnby_(?:live|test)_[A-Za-z0-9_-]{16,}/g, // our own API keys
+  /\bvdo_(?:live|test)_[A-Za-z0-9_-]{16,}/g, // our own API keys
   /\b(?:ghp|gho|github_pat)_[A-Za-z0-9_]{20,}/g,
   /\bxox[abpr]-[A-Za-z0-9-]{10,}/g, // Slack
 ];

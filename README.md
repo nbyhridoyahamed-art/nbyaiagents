@@ -1,4 +1,4 @@
-# NBY AI Agents
+# Virtual Desks Online
 
 Build an AI workforce: hire AI employees, give them company knowledge and tools, decide exactly what they may do, and automate real work with workflows — with humans approving anything that matters.
 
@@ -66,9 +66,9 @@ Requirements: **Node.js 20+** and **PostgreSQL 14+** (or the bundled embedded Po
 ```bash
 npm install
 cp .env.example .env         # then fill in ENCRYPTION_KEY and SIGNING_SECRET
-npm run db:start             # embedded Postgres on :5433 (creates nby and nby_test) — keep it running
+npm run db:start             # embedded Postgres on :5433 (creates vdo and vdo_test) — keep it running
 npm run db:deploy            # apply migrations
-npm run db:seed              # optional: NBY Demo Company + demo admin
+npm run db:seed              # optional: Virtual Desks Demo Company + demo admin
 npm run dev                  # http://localhost:3000
 ```
 
@@ -85,7 +85,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - Schema: `prisma/schema.prisma`. Migrations: `prisma/migrations/*` (hand-written SQL where needed).
 - Apply: `npm run db:deploy`. Regenerate the client: `npm run db:generate`.
 - Check for drift: `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`.
-- **Seed** (`npm run db:seed`) builds *NBY Demo Company* (flagged as demo):
+- **Seed** (`npm run db:seed`) builds *Virtual Desks Demo Company* (flagged as demo):
   - Departments, the simulated integrations, a Company Handbook, 8 employees from templates, and 4 workflows that are genuinely simulated and then published.
   - Real pending work (employees pause on real approvals and input requests).
   - Bulk demo history (tasks, runs, usage) for the dashboard. Every bulk row is tagged; `npm run db:seed -- --reset` removes and rebuilds exactly those rows.
@@ -106,7 +106,7 @@ Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI
 
 ## Integrations and tools
 
-- **Simulated integrations** (`lib/integrations/mock`) store records inside NBY only. Sending an email records it in a mock outbox and never delivers it.
+- **Simulated integrations** (`lib/integrations/mock`) store records inside Virtual Desks only. Sending an email records it in a mock outbox and never delivers it.
 - **Custom REST tools**: build them in the UI with typed parameters, auth (bearer, API key, basic) and encrypted credentials. Requests go through `safeHttpRequest`:
   - http/https only;
   - private, loopback and metadata ranges blocked, checked at connect time;
@@ -139,6 +139,8 @@ Jobs: `agent.execute`, `agent.resume`, `workflow.advance`, `knowledge.index`, `s
 
 ## Public API and webhooks
 
+> **MCP:** the same keys also work with the Model Context Protocol endpoint `POST /api/mcp` (see [Connect AI assistants](#connect-ai-assistants-mcp)).
+
 Create scoped keys in **Settings → API keys**. A key is shown once; only a SHA-256 hash is stored. Each key is limited to 120 requests per minute.
 
 | Method | Path | Scope |
@@ -153,26 +155,44 @@ Create scoped keys in **Settings → API keys**. A key is shown once; only a SHA
 
 ```bash
 curl -X POST "$APP_URL/api/v1/agents/AGENT_ID/run" \
-  -H "Authorization: Bearer $NBY_API_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VDO_API_KEY" -H "Content-Type: application/json" \
   -d '{"input":"Research Globex and summarise their pricing"}'
 ```
 
 Webhooks take a JSON object body and require one of two forms of authentication:
 
-- `X-NBY-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`. Timestamps must be within 5 minutes.
+- `X-VDO-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`. Timestamps must be within 5 minutes.
 - A `workflows:run` API key.
 
 Send `Idempotency-Key` so retries never start a second run. Reveal or rotate the signing secret in the workflow builder.
+
+### Connect AI assistants (MCP)
+
+`POST /api/mcp` is a stateless Streamable-HTTP [Model Context Protocol](https://modelcontextprotocol.io) server, so Claude, ChatGPT and other MCP clients can use your Virtual Desks. Authenticate with `Authorization: Bearer <API key>`; the tools a client sees depend on the key's scopes:
+
+| Tool | Scope |
+| --- | --- |
+| `list_employees` | `agents:read` |
+| `assign_work` | `agents:run` |
+| `get_task` | `tasks:read` |
+| `list_workflows`, `get_workflow_run` | `workflows:read` |
+| `run_workflow` | `workflows:run` |
+
+```bash
+claude mcp add --transport http virtual-desks "$APP_URL/api/mcp" --header "Authorization: Bearer $VDO_API_KEY"
+```
+
+Clients that only speak stdio can bridge with `npx mcp-remote "$APP_URL/api/mcp" --header "Authorization: Bearer $VDO_API_KEY"`. Clients that require OAuth (such as ChatGPT's connector UI) are not supported yet.
 
 ## Testing
 
 ```bash
 npm run typecheck && npm run lint
-npm test                    # unit + integration (Vitest) against the nby_test database
-npm run test:e2e            # Playwright: production build on :3100 with its own nby_e2e database
+npm test                    # unit + integration (Vitest) against the vdo_test database
+npm run test:e2e            # Playwright: production build on :3100 with its own vdo_e2e database
 ```
 
-- **Integration tests** use real PostgreSQL (`tests/setup.ts` forces `nby_test`) and a scripted model. They cover:
+- **Integration tests** use real PostgreSQL (`tests/setup.ts` forces `vdo_test`) and a scripted model. They cover:
   - the runtime, approvals and resume;
   - tenancy, the permission engine and knowledge;
   - the workflow engine and templates;

@@ -58,7 +58,7 @@ export async function searchKnowledge(orgId: string, knowledgeBaseIds: string[],
     >`
       SELECT c."id", c."documentId", c."knowledgeBaseId", c."content", c."heading", c."pageNumber",
              d."title", d."fileName",
-             nby_cosine(c."embedding", ${q.vector}::double precision[]) AS vscore,
+             vdo_cosine(c."embedding", ${q.vector}::double precision[]) AS vscore,
              ts_rank(to_tsvector('english', c."content"), plainto_tsquery('english', ${query})) AS tscore
       FROM "KnowledgeChunk" c
       JOIN "KnowledgeDocument" d ON d."id" = c."documentId"
@@ -66,7 +66,7 @@ export async function searchKnowledge(orgId: string, knowledgeBaseIds: string[],
         AND c."knowledgeBaseId" IN (${Prisma.join(knowledgeBaseIds)})
         AND c."embeddingModel" = ${embeddingModel}
         AND d."deletedAt" IS NULL AND d."status" = 'INDEXED'
-      ORDER BY (0.75 * nby_cosine(c."embedding", ${q.vector}::double precision[])
+      ORDER BY (0.75 * vdo_cosine(c."embedding", ${q.vector}::double precision[])
               + 0.25 * LEAST(ts_rank(to_tsvector('english', c."content"), plainto_tsquery('english', ${query})) * 5, 1)) DESC
       LIMIT ${limit * 2}`;
     for (const r of rows) {

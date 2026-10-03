@@ -59,7 +59,7 @@ export async function markNotificationsReadAction(ids?: string[]) {
 }
 
 export interface SearchResult {
-  group: "Agents" | "Tasks" | "Workflows" | "Knowledge" | "Tools" | "Conversations";
+  group: "Employees" | "Tasks" | "Workflows" | "Knowledge" | "Tools" | "Conversations";
   id: string;
   title: string;
   subtitle?: string;
@@ -94,7 +94,7 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
     }),
   ]);
   return [
-    ...agents.map((a) => ({ group: "Agents" as const, id: a.id, title: a.name, subtitle: a.jobTitle, href: `/agents/${a.id}` })),
+    ...agents.map((a) => ({ group: "Employees" as const, id: a.id, title: a.name, subtitle: a.jobTitle, href: `/agents/${a.id}` })),
     ...tasks.map((t) => ({ group: "Tasks" as const, id: t.id, title: t.title, subtitle: t.status.toLowerCase(), href: `/tasks/${t.id}` })),
     ...workflows.map((w) => ({ group: "Workflows" as const, id: w.id, title: w.name, subtitle: w.status.toLowerCase(), href: `/workflows/${w.id}` })),
     ...docs.map((d) => ({ group: "Knowledge" as const, id: d.id, title: d.title, href: `/knowledge/${d.knowledgeBaseId}` })),

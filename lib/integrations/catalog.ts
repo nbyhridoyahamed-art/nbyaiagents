@@ -35,7 +35,7 @@ export interface IntegrationInfo {
 
 export const INTEGRATIONS: IntegrationInfo[] = [
   // Simulated demo integrations — clearly identifiable, never contact the outside world.
-  { key: "mock_crm", name: "Mock CRM", category: "CRM", description: "Simulated CRM with contacts and leads for testing. Stored inside NBY only.", availability: "available", simulated: true, icon: "contact" },
+  { key: "mock_crm", name: "Mock CRM", category: "CRM", description: "Simulated CRM with contacts and leads for testing. Stored inside Virtual Desks only.", availability: "available", simulated: true, icon: "contact" },
   { key: "mock_email", name: "Mock Email", category: "Communication", description: "Simulated inbox and outbox. Messages are recorded, never delivered.", availability: "available", simulated: true, icon: "mail" },
   { key: "mock_calendar", name: "Mock Calendar", category: "Productivity", description: "Simulated calendar for scheduling tests.", availability: "available", simulated: true, icon: "calendar" },
   { key: "mock_search", name: "Mock Search", category: "Research", description: "Returns clearly-labelled sample search results and company profiles.", availability: "available", simulated: true, icon: "search" },

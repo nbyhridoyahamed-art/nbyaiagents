@@ -74,7 +74,7 @@ export function CompanyHero({ summary, isDemo, canHire }: { summary: DashboardSu
 }
 
 const NODES = [
-  { id: "agent", x: 210, y: 90, r: 22, label: "Agent", color: "var(--brand)" },
+  { id: "agent", x: 210, y: 90, r: 22, label: "Employee", color: "var(--brand)" },
   { id: "tool", x: 360, y: 44, r: 15, label: "Tool", color: "var(--info)" },
   { id: "workflow", x: 350, y: 146, r: 16, label: "Workflow", color: "var(--success)" },
   { id: "knowledge", x: 66, y: 52, r: 15, label: "Knowledge", color: "var(--ai)" },

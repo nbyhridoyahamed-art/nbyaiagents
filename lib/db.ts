@@ -10,12 +10,12 @@ function createClient() {
   return new PrismaClient({ adapter });
 }
 
-const globalForPrisma = globalThis as unknown as { __nbyPrisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { __vdoPrisma?: PrismaClient };
 
 /** Shared Prisma client (one pool per process, reused across hot reloads). */
-export const prisma: PrismaClient = globalForPrisma.__nbyPrisma ?? createClient();
+export const prisma: PrismaClient = globalForPrisma.__vdoPrisma ?? createClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.__nbyPrisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.__vdoPrisma = prisma;
 
 /** Transaction client type, for services that accept either a client or a transaction. */
 export type Db = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;

@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-const LOCAL_EVENT = "nby-local-storage";
+const LOCAL_EVENT = "vdo-local-storage";
 const noopSubscribe = () => () => {};
 
 function readStorage(key: string): string | null {

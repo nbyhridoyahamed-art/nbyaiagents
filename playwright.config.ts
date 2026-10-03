@@ -3,7 +3,7 @@ import { E2E } from "./tests/e2e/env";
 
 /**
  * End-to-end tests (spec §136–137) against a production build on :3100 with a
- * separate database (nby_e2e) — they never touch development data.
+ * separate database (vdo_e2e) — they never touch development data.
  *   npm run test:e2e
  */
 export default defineConfig({
