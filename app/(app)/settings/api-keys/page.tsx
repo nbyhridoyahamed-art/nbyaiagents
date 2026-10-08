@@ -65,24 +65,39 @@ export default async function ApiKeysPage() {
           Connect AI assistants (MCP)
         </h2>
         <p className="mt-1 text-[13px] text-text-secondary">
-          Claude, ChatGPT and any other Model Context Protocol client can list your employees and workflows, give them work and read the results. Create a key above, then add this server URL:
+          Any Model Context Protocol client that can send a custom header (Claude Code, Claude Desktop, Cursor and others) can list your employees and workflows, give them work and read the results. Create a key above, then add this server URL:
         </p>
         <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`${base}/api/mcp`}</pre>
         <p className="mt-3 text-[12.5px] text-text-secondary">
-          Authenticate with <code className="rounded bg-surface-2 px-1">Authorization: Bearer vdo_…</code>. Tools follow the key&apos;s permissions: list_employees, assign_work, get_task, list_workflows, run_workflow, get_workflow_run.
+          Authenticate with <code className="rounded bg-surface-2 px-1">Authorization: Bearer vdo_…</code>. Tools follow the key&apos;s permissions: list_employees, assign_work, get_task, list_workflows, run_workflow, get_workflow_run. Clients that only offer OAuth sign-in can&apos;t connect with an API key.
         </p>
         <p className="mt-4 text-xs font-semibold text-text-muted">Claude Code</p>
-        <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`claude mcp add --transport http virtual-desks ${base}/api/mcp \\
-  --header "Authorization: Bearer $VDO_API_KEY"`}</pre>
+        <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`claude mcp add --transport http virtual-desks ${base}/api/mcp --header "Authorization: Bearer YOUR_KEY"`}</pre>
+        <p className="mt-2 text-[12.5px] text-text-secondary">
+          Keep it on one line and paste the key itself in place of YOUR_KEY. This works in PowerShell, Command Prompt, macOS and Linux (a trailing backslash or <code className="rounded bg-surface-2 px-1">$VDO_API_KEY</code> only works in bash). Then run{" "}
+          <code className="rounded bg-surface-2 px-1">claude mcp get virtual-desks</code>: it should say Connected.
+        </p>
         <p className="mt-4 text-xs font-semibold text-text-muted">Any client that reads a JSON config (Claude Desktop, Cursor, …)</p>
         <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`{
   "mcpServers": {
     "virtual-desks": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "${base}/api/mcp", "--header", "Authorization: Bearer YOUR_KEY"]
+      "args": ["-y", "mcp-remote", "${base}/api/mcp", "--header", "Authorization:\${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer YOUR_KEY" }
     }
   }
 }`}</pre>
+        <p className="mt-2 text-[12.5px] text-text-secondary">
+          The key goes in an environment variable on purpose: a space inside a command argument gets split on Windows and the header is lost. Requires Node.js. Restart the client after saving the config.
+        </p>
+        <p className="mt-4 text-xs font-semibold text-text-muted">Test a key from a terminal with curl (macOS, Linux, Git Bash)</p>
+        <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`curl -X POST ${base}/api/mcp \\
+  -H "Authorization: Bearer $VDO_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}</pre>
+        <p className="mt-2 text-[12.5px] text-text-secondary">
+          A list of tools means it works. A <code className="rounded bg-surface-2 px-1">401</code> means the key is missing, mistyped or revoked.
+        </p>
       </section>
     </div>
   );

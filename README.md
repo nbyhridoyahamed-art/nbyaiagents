@@ -180,9 +180,26 @@ Send `Idempotency-Key` so retries never start a second run. Reveal or rotate the
 
 ```bash
 claude mcp add --transport http virtual-desks "$APP_URL/api/mcp" --header "Authorization: Bearer $VDO_API_KEY"
+claude mcp get virtual-desks   # should say Connected
 ```
 
-Clients that only speak stdio can bridge with `npx mcp-remote "$APP_URL/api/mcp" --header "Authorization: Bearer $VDO_API_KEY"`. Clients that require OAuth (such as ChatGPT's connector UI) are not supported yet.
+Keep the command on one line. On Windows PowerShell or Command Prompt, paste the URL and the key itself instead of `$APP_URL` and `$VDO_API_KEY` (those variables only expand in bash), and don't paste the two-line form with a trailing `\`.
+
+Clients that only speak stdio (Claude Desktop, Cursor) can bridge with `mcp-remote`. Put the key in an environment variable rather than in the argument: a space inside an argument is split on Windows and the header is lost, which shows up as a 401 followed by a confusing OAuth error.
+
+```json
+{
+  "mcpServers": {
+    "virtual-desks": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://YOUR_APP_URL/api/mcp", "--header", "Authorization:${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer vdo_live_YOUR_KEY" }
+    }
+  }
+}
+```
+
+Check a key from any terminal: `curl -X POST "$APP_URL/api/mcp" -H "Authorization: Bearer $VDO_API_KEY" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'` should list tools; `401` means the key is missing, mistyped or revoked. Clients that require OAuth (such as ChatGPT's connector UI) are not supported yet.
 
 ## Testing
 

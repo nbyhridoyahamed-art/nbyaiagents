@@ -15,6 +15,8 @@ describe("MCP endpoint", () => {
     const res = await call({ jsonrpc: "2.0", id: 1, method: "tools/list" });
     expect(res.status).toBe(401);
     expect(res.headers.get("www-authenticate")).toContain("Bearer");
+    // Browser-based clients can only read the 401 (and tell the user the key is wrong) if CORS headers are present.
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
     expect((await mcpGet()).status).toBe(405);
   });
 

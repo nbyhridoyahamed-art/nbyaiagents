@@ -12,7 +12,28 @@ import { authenticateApiKey } from "@/server/services/api-keys";
  * Connect Claude, ChatGPT or any MCP client with `Authorization: Bearer <API key>`.
  * Tools are limited to the permissions (scopes) granted to the key.
  */
+/**
+ * CORS. Callers authenticate with a bearer key in a header, never with cookies, so any origin may
+ * call this endpoint. Browser-based MCP clients (MCP Inspector, web apps) need the preflight to pass.
+ */
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, MCP-Protocol-Version, Mcp-Session-Id",
+  "Access-Control-Expose-Headers": "WWW-Authenticate, X-Request-Id, Mcp-Session-Id",
+  "Access-Control-Max-Age": "86400",
+};
+
+function withCors(res: Response): Response {
+  for (const [name, value] of Object.entries(CORS_HEADERS)) res.headers.set(name, value);
+  return res;
+}
+
 export async function POST(request: Request) {
+  return withCors(await handlePost(request));
+}
+
+async function handlePost(request: Request): Promise<Response> {
   const requestId = `req_${randomToken(9)}`;
   try {
     const principal = await authenticateApiKey(request.headers.get("authorization"));
@@ -39,7 +60,12 @@ export async function POST(request: Request) {
   }
 }
 
+/** CORS preflight for browser-based MCP clients. */
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 /** This server never opens a server-to-client stream. */
 export function GET() {
-  return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  return withCors(new Response(null, { status: 405, headers: { Allow: "POST, OPTIONS" } }));
 }
