@@ -164,6 +164,28 @@ Webhooks take a JSON object body and require one of two forms of authentication:
 
 Send `Idempotency-Key` so retries never start a second run. Reveal or rotate the signing secret in the workflow builder.
 
+### MCP server
+
+The app is also a [Model Context Protocol](https://modelcontextprotocol.io) server at `POST /api/mcp` (stateless Streamable HTTP). It uses the same API keys, scopes and rate limit as the REST API; `tools/list` only shows tools the key may use.
+
+| Tool | Scope |
+|---|---|
+| `list_agents` | `agents:read` |
+| `run_agent` | `agents:run` |
+| `get_task` | `tasks:read` |
+| `list_workflows` | `workflows:read` |
+| `run_workflow` | `workflows:run` |
+| `get_workflow_run` | `workflows:read` |
+
+Connect Claude Code:
+
+```bash
+claude mcp add --transport http vdesks https://app.vdesks.online/api/mcp \
+  --header "Authorization: Bearer nby_YOUR_KEY"
+```
+
+Any client that can send a custom `Authorization` header works the same way. Clients that only support OAuth (such as claude.ai custom connectors) are not supported yet.
+
 ## Testing
 
 ```bash
