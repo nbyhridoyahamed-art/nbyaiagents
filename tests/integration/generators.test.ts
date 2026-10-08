@@ -8,7 +8,7 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe("Ask NBY AI", () => {
+describe("Ask Virtual Desks AI", () => {
   it("guesses whether the person wants an employee or a workflow", () => {
     expect(guessIntent("Create a customer support employee who answers refund questions")).toBe("employee");
     expect(guessIntent("Whenever a new lead arrives, research it and email them")).toBe("workflow");

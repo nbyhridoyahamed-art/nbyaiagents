@@ -1,4 +1,4 @@
-# Deploying NBY AI Agents on Railway
+# Deploying Virtual Desks Online on Railway
 
 This guide takes the app from this repository to a live, HTTPS site on [Railway](https://railway.com), with a PostgreSQL database, persistent file storage and working background jobs.
 
@@ -81,11 +81,11 @@ Expect about 30–45 minutes the first time.
 
 The project is a local git repository with no remote yet.
 
-1. On GitHub, create a new **private** repository, e.g. `nby-ai-agents`. Don't add a README or .gitignore, because the repo already has both.
+1. On GitHub, create a new **private** repository, e.g. `vdesksonline`. Don't add a README or .gitignore, because the repo already has both.
 2. Push the code. The work is on the `feat/nby-ai-agents-v1` branch. Railway deploys one branch, so either merge it into `master`/`main` first or deploy that branch directly.
 
 ```bash
-git remote add origin https://github.com/<you>/nby-ai-agents.git
+git remote add origin https://github.com/<you>/vdesksonline.git
 ```
 
 ```bash
@@ -105,7 +105,7 @@ git push -u origin feat/nby-ai-agents-v1
 
 ## Step 3 — Add the app service
 
-1. In the same project, click **Create → GitHub Repo**. Authorise Railway to read your GitHub account if asked, then pick `nby-ai-agents`.
+1. In the same project, click **Create → GitHub Repo**. Authorise Railway to read your GitHub account if asked, then pick `vdesksonline`.
 2. Open the new service → **Settings**:
    - **Source → Branch:** choose the branch you pushed (e.g. `feat/nby-ai-agents-v1`, or `main` after merging).
    - **Build:** leave the builder on **Railpack** and the build command empty. Railpack runs `npm run build` by default.
@@ -165,7 +165,7 @@ STORAGE_LOCAL_DIR="/data/storage"
 # Email (see Step 9; "console" only logs messages and delivers nothing)
 EMAIL_PROVIDER="resend"
 RESEND_API_KEY="<your Resend API key>"
-EMAIL_FROM="NBY AI Agents <no-reply@yourdomain.com>"
+EMAIL_FROM="Virtual Desks Online <no-reply@yourdomain.com>"
 
 # AI providers: set at least one; leave the others out
 ANTHROPIC_API_KEY=""
@@ -257,7 +257,7 @@ The production database starts empty. There's no demo data and no demo admin: `n
 
 1. In Resend, add and **verify your sending domain**. Resend gives you DNS records (SPF/DKIM) to add at your DNS provider.
 2. Create an API key and set it as `RESEND_API_KEY`.
-3. Set `EMAIL_FROM` to an address on that verified domain, e.g. `NBY AI Agents <no-reply@yourdomain.com>`.
+3. Set `EMAIL_FROM` to an address on that verified domain, e.g. `Virtual Desks Online <no-reply@yourdomain.com>`.
 4. Redeploy, then test with **Forgot password** on your own account.
 
 Email failures never break the request that triggered them. They're logged as `[email] send failed` in the app logs.

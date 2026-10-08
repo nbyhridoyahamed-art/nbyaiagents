@@ -1,4 +1,4 @@
-// NBY AI Agents — data model
+// Virtual Desks Online — data model
 //
 // Conventions
 // - IDs are prefixed + random (e.g. `agent_3f9c…`, `run_81ab…`) via the SQL function

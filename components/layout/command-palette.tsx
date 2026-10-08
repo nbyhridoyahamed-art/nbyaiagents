@@ -9,7 +9,7 @@ import { NAV_SECTIONS } from "./nav-config";
 import { ASK_EVENT } from "./ask-nby";
 
 const ACTIONS: { label: string; href: string; icon: typeof Users }[] = [
-  { label: "Ask NBY AI", href: "#ask", icon: Sparkles },
+  { label: "Ask Virtual Desks AI", href: "#ask", icon: Sparkles },
   { label: "Create AI Employee", href: "/agents/new", icon: UserPlus },
   { label: "Create Workflow", href: "/workflows/new", icon: Workflow },
   { label: "Run Workflow", href: "/workflows?run=1", icon: Play },

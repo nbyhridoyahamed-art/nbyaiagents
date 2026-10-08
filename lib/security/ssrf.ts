@@ -126,7 +126,7 @@ export async function safeHttpRequest(req: SafeRequest, redirects = 0): Promise<
       url,
       {
         method: req.method,
-        headers: { "user-agent": "NBY-AI-Agents/1.0", ...req.headers },
+        headers: { "user-agent": "VirtualDesksOnline/1.0", ...req.headers },
         lookup: guardedLookup(allowPrivate),
         timeout: req.timeoutMs ?? 20_000,
       },

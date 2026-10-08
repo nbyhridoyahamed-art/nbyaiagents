@@ -40,7 +40,7 @@ export default async function DocumentPage(props: PageProps<"/knowledge/document
           </Link>
         }
         title={doc.title}
-        description={`${doc.sourceType === "UPLOAD" ? doc.fileName : doc.sourceType === "WEBSITE" ? doc.sourceUrl : "Written in NBY"} · ${doc.chunkCount} chunks${doc.pageCount ? ` · ${doc.pageCount} pages` : ""}${doc.embeddingModel ? ` · embeddings: ${doc.embeddingModel}` : ""}`}
+        description={`${doc.sourceType === "UPLOAD" ? doc.fileName : doc.sourceType === "WEBSITE" ? doc.sourceUrl : "Written in Virtual Desks Online"} · ${doc.chunkCount} chunks${doc.pageCount ? ` · ${doc.pageCount} pages` : ""}${doc.embeddingModel ? ` · embeddings: ${doc.embeddingModel}` : ""}`}
         actions={
           <>
             <Badge className={doc.status === "INDEXED" ? "bg-success-soft text-success-text" : doc.status === "FAILED" ? "bg-danger-soft text-danger-text" : "bg-surface-2 text-text-secondary"}>

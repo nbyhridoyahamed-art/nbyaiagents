@@ -1,4 +1,4 @@
-# NBY AI Agents
+# Virtual Desks Online
 
 Build an AI workforce: hire AI employees, give them company knowledge and tools, decide exactly what they may do, and automate real work with workflows — with humans approving anything that matters.
 
@@ -68,7 +68,7 @@ npm install
 cp .env.example .env         # then fill in ENCRYPTION_KEY and SIGNING_SECRET
 npm run db:start             # embedded Postgres on :5433 (creates nby and nby_test) — keep it running
 npm run db:deploy            # apply migrations
-npm run db:seed              # optional: NBY Demo Company + demo admin
+npm run db:seed              # optional: Virtual Desks Demo Company + demo admin
 npm run dev                  # http://localhost:3000
 ```
 
@@ -85,7 +85,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - Schema: `prisma/schema.prisma`. Migrations: `prisma/migrations/*` (hand-written SQL where needed).
 - Apply: `npm run db:deploy`. Regenerate the client: `npm run db:generate`.
 - Check for drift: `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`.
-- **Seed** (`npm run db:seed`) builds *NBY Demo Company* (flagged as demo):
+- **Seed** (`npm run db:seed`) builds *Virtual Desks Demo Company* (flagged as demo):
   - Departments, the simulated integrations, a Company Handbook, 8 employees from templates, and 4 workflows that are genuinely simulated and then published.
   - Real pending work (employees pause on real approvals and input requests).
   - Bulk demo history (tasks, runs, usage) for the dashboard. Every bulk row is tagged; `npm run db:seed -- --reset` removes and rebuilds exactly those rows.
@@ -106,7 +106,7 @@ Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI
 
 ## Integrations and tools
 
-- **Simulated integrations** (`lib/integrations/mock`) store records inside NBY only. Sending an email records it in a mock outbox and never delivers it.
+- **Simulated integrations** (`lib/integrations/mock`) store records inside Virtual Desks Online only. Sending an email records it in a mock outbox and never delivers it.
 - **Custom REST tools**: build them in the UI with typed parameters, auth (bearer, API key, basic) and encrypted credentials. Requests go through `safeHttpRequest`:
   - http/https only;
   - private, loopback and metadata ranges blocked, checked at connect time;
@@ -153,7 +153,7 @@ Create scoped keys in **Settings → API keys**. A key is shown once; only a SHA
 
 ```bash
 curl -X POST "$APP_URL/api/v1/agents/AGENT_ID/run" \
-  -H "Authorization: Bearer $NBY_API_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VDESKS_API_KEY" -H "Content-Type: application/json" \
   -d '{"input":"Research Globex and summarise their pricing"}'
 ```
 

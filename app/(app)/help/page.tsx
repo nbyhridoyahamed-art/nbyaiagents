@@ -7,7 +7,7 @@ import { PageContainer, PageHeader } from "@/components/layout/page";
 export const metadata: Metadata = { title: "Help" };
 
 const STEPS = [
-  { title: "Hire an AI employee", body: "Start from a template, describe the role to Ask NBY AI, or build one step by step. Every employee starts as a draft.", href: "/agents/new", icon: Users },
+  { title: "Hire an AI employee", body: "Start from a template, describe the role to Ask Virtual Desks AI, or build one step by step. Every employee starts as a draft.", href: "/agents/new", icon: Users },
   { title: "Give them knowledge", body: "Upload policies, product sheets and SOPs. Employees cite what they use, and only see collections you allow.", href: "/knowledge", icon: BookOpen },
   { title: "Connect tools and set permissions", body: "Connect integrations, then decide per employee what's allowed, what needs your approval and what's blocked.", href: "/integrations", icon: Plug },
   { title: "Automate with a workflow", body: "Describe a process, install a template or build it visually. Test it with a simulation, then publish.", href: "/workflows/new", icon: Workflow },
@@ -101,7 +101,7 @@ export default async function HelpPage() {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <dt className="flex items-center gap-1.5">
-                  <Sparkles className="size-3.5 text-ai" aria-hidden /> Ask NBY AI
+                  <Sparkles className="size-3.5 text-ai" aria-hidden /> Ask Virtual Desks AI
                 </dt>
                 <dd className="text-text-secondary">button at the bottom right, or from search</dd>
               </div>

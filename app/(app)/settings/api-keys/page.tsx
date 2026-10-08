@@ -53,7 +53,7 @@ export default async function ApiKeysPage() {
         </ul>
         <p className="mt-4 text-xs font-semibold text-text-muted">Example: give an employee work</p>
         <pre className="mt-1 overflow-x-auto rounded-lg bg-surface-2 p-3 font-mono text-[11.5px]">{`curl -X POST ${base}/api/v1/agents/AGENT_ID/run \\
-  -H "Authorization: Bearer $NBY_API_KEY" \\
+  -H "Authorization: Bearer $VDESKS_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"input": "Research Globex and summarise their pricing"}'`}</pre>
         <p className="mt-3 text-[12.5px] text-text-secondary">

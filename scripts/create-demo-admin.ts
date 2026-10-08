@@ -1,7 +1,7 @@
 /**
  * Creates (or resets) a local demo admin account:
  *   - platform admin (SUPER_ADMIN), email verified
- *   - Owner of "NBY Demo Company" (onboarding completed)
+ *   - Owner of "Virtual Desks Demo Company" (onboarding completed)
  *
  * Credentials come from DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD in .env.
  * If the password is missing, a random one is generated and written to .env.
@@ -40,16 +40,16 @@ export async function ensureDemoAdmin() {
     update: { passwordHash, platformRole: "SUPER_ADMIN", emailVerifiedAt: new Date(), deletedAt: null },
   });
 
-  const membership = await prisma.organizationMember.findFirst({ where: { userId: user.id, organization: { name: "NBY Demo Company", deletedAt: null } } });
+  const membership = await prisma.organizationMember.findFirst({ where: { userId: user.id, organization: { name: "Virtual Desks Demo Company", deletedAt: null } } });
   let orgId = membership?.orgId;
   if (!orgId) {
     const org = await createOrganization(user.id, {
-      name: "NBY Demo Company",
+      name: "Virtual Desks Demo Company",
       timezone: "UTC",
       industry: "SaaS / Software",
       companySize: "2–10",
       website: "https://nby.test",
-      description: "Demo workspace for exploring NBY AI Agents.",
+      description: "Demo workspace for exploring Virtual Desks Online.",
       businessGoals: ["more_leads", "faster_support", "content", "research"],
     });
     orgId = org.id;

@@ -29,7 +29,7 @@ export function DescribeWorkflow({ initial }: { initial?: string }) {
   });
   const create = useAction(createGeneratedWorkflowAction, { refresh: false, success: "Draft created. Review it, run a test, then publish.", onSuccess: (d) => router.push(`/workflows/${d.id}`) });
 
-  // Arriving from "Ask NBY AI" with a description: generate straight away.
+  // Arriving from "Ask Virtual Desks AI" with a description: generate straight away.
   const started = useRef(false);
   useEffect(() => {
     if (initial && !started.current) {

@@ -20,7 +20,7 @@ export function AiDraftPanel({ onBack, onDraft, initialText }: { onBack: () => v
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  // Arriving from "Ask NBY AI": draft straight away (still only a draft to review).
+  // Arriving from "Ask Virtual Desks AI": draft straight away (still only a draft to review).
   const autoStarted = useRef(false);
   useEffect(() => {
     if (initialText && initialText.trim().length >= 15 && !autoStarted.current) {
