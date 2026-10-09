@@ -118,6 +118,7 @@ model Organization {
   tools           Tool[]
   credentials     ToolCredential[]
   connections     IntegrationConnection[]
+  websites        Website[]
   workflows       Workflow[]
   tasks           Task[]
   approvals       Approval[]
@@ -684,6 +685,29 @@ model IntegrationConnection {
   tools        Tool[]
 
   @@unique([orgId, integrationKey])
+}
+
+/// A website the company owns, bound to the Google Analytics (GA4) and Search Console properties that measure it.
+/// Employees' Google tools can only reach the properties bound here.
+model Website {
+  id             String   @id @default(dbgenerated("vdo_id('site'::text)"))
+  orgId          String
+  /// Normalized host, e.g. "mobilecover.com.bd".
+  domain         String
+  name           String?
+  /// Search Console property: "https://example.com/" or "sc-domain:example.com".
+  gscSiteUrl     String?
+  /// GA4 property resource name: "properties/123456789".
+  gaProperty     String?
+  gaPropertyName String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, domain])
+  @@index([orgId])
 }
 
 /// Records held by simulated (mock) integrations — e.g. Mock CRM contacts and the

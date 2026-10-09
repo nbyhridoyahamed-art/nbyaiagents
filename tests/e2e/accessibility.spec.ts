@@ -4,7 +4,7 @@ import { signUpWithCompany } from "./helpers";
 
 /** Automated accessibility audit (spec §107): no serious or critical WCAG 2 A/AA violations. */
 
-const PAGES = ["/dashboard", "/office", "/agents", "/tasks", "/approvals", "/inbox", "/workflows", "/workflows/new?mode=describe", "/knowledge", "/integrations", "/analytics", "/templates", "/settings", "/settings/api-keys", "/help"];
+const PAGES = ["/dashboard", "/office", "/agents", "/tasks", "/approvals", "/inbox", "/workflows", "/workflows/new?mode=describe", "/knowledge", "/integrations", "/websites", "/analytics", "/templates", "/settings", "/settings/api-keys", "/help"];
 
 test("key pages have no serious accessibility violations", async ({ page }) => {
   test.setTimeout(300_000);

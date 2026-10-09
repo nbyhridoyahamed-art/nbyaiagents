@@ -3,6 +3,7 @@ import {
   BookOpen,
   Building2,
   CheckCircle2,
+  Globe,
   HelpCircle,
   Inbox,
   LayoutDashboard,
@@ -52,6 +53,7 @@ export const NAV_SECTIONS: { id: string; items: NavItem[] }[] = [
   {
     id: "insight",
     items: [
+      { href: "/websites", label: "Websites", icon: Globe },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/templates", label: "Templates", icon: LayoutTemplate },
     ],
@@ -86,6 +88,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   tools: "Tools",
   integrations: "Integrations",
   analytics: "Analytics",
+  websites: "Websites",
   templates: "Templates",
   settings: "Settings",
   help: "Help",

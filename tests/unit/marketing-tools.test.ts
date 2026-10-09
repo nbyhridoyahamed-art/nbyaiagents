@@ -1,10 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MARKETING_TOOLS, normalizeProperty, searchConsoleRange } from "@/lib/integrations/google/marketing-tools";
 import type { ToolExecutionContext } from "@/lib/tools/types";
+import { UNRESTRICTED, type WebsiteScope } from "@/lib/websites/scope";
 
-afterEach(() => vi.restoreAllMocks());
+// The tools ask which websites the workspace linked; these tests choose the answer.
+const scope = vi.hoisted(() => ({ current: { restricted: false, websites: [] } as WebsiteScope }));
+vi.mock("@/server/services/website-access", () => ({ getWebsiteScope: async () => scope.current }));
 
-const ctx = { secret: "ya29.test-access-token" } as ToolExecutionContext;
+afterEach(() => {
+  vi.restoreAllMocks();
+  scope.current = UNRESTRICTED;
+});
+
+const ctx = { orgId: "org_1", secret: "ya29.test-access-token" } as ToolExecutionContext;
 const tool = (key: string) => MARKETING_TOOLS.find((t) => t.key === key)!;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -141,5 +149,73 @@ describe("Analytics (GA4) tools", () => {
     expect(schema.safeParse({ property: "123456", metrics: ["sessions"], dimensions: ["pagePath"], startDate: "2026-09-01", endDate: "today" }).success).toBe(true);
     expect(schema.safeParse({ property: "123456", metrics: ["sessions; drop"] }).success).toBe(false);
     expect(schema.safeParse({ property: "123456", startDate: "last week" }).success).toBe(false);
+  });
+});
+
+describe("tools stay inside the websites a workspace linked", () => {
+  const linked: WebsiteScope = {
+    restricted: true,
+    websites: [
+      { id: "site_1", domain: "mobilecover.com.bd", name: "Mobile Cover", gscSiteUrl: "sc-domain:mobilecover.com.bd", gaProperty: "properties/111111" },
+      { id: "site_2", domain: "notlinked.example", name: null, gscSiteUrl: null, gaProperty: null },
+    ],
+  };
+  const sites = { siteEntry: [{ siteUrl: "sc-domain:mobilecover.com.bd", permissionLevel: "siteOwner" }, { siteUrl: "sc-domain:other-client.com", permissionLevel: "siteOwner" }] };
+
+  it("lists only the linked Search Console sites and says which website they belong to", async () => {
+    scope.current = linked;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(sites));
+    const res = await tool("google_search_console.list_sites").execute({}, ctx);
+    expect(res.output).toMatchObject({
+      sites: [{ siteUrl: "sc-domain:mobilecover.com.bd" }],
+      limitedToWebsites: true,
+      websites: [{ domain: "mobilecover.com.bd", searchConsoleSite: "sc-domain:mobilecover.com.bd", analyticsProperty: "properties/111111" }, { domain: "notlinked.example", searchConsoleSite: null }],
+    });
+    expect(JSON.stringify(res.output)).not.toContain("other-client.com");
+  });
+
+  it("lists only the linked Analytics properties", async () => {
+    scope.current = linked;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json({ accountSummaries: [{ account: "accounts/1", displayName: "A", propertySummaries: [{ property: "properties/111111", displayName: "Mobile Cover" }, { property: "properties/222222", displayName: "Someone else" }] }] }),
+    );
+    const res = await tool("google_analytics.list_properties").execute({}, ctx);
+    expect((res.output as { properties: { property: string }[] }).properties.map((p) => p.property)).toEqual(["properties/111111"]);
+  });
+
+  it("refuses a property that isn't linked, without calling Google", async () => {
+    scope.current = linked;
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await expect(tool("google_search_console.search_performance").execute({ siteUrl: "sc-domain:other-client.com" }, ctx)).rejects.toThrow(/isn't one of the Search Console properties linked/);
+    await expect(tool("google_search_console.inspect_url").execute({ siteUrl: "https://other-client.com/", url: "https://other-client.com/" }, ctx)).rejects.toThrow(/linked to your websites/);
+    await expect(tool("google_analytics.run_report").execute({ property: "properties/222222" }, ctx)).rejects.toThrow(/Analytics properties linked/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts the website address in place of the property", async () => {
+    scope.current = linked;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json({ rows: [] }));
+    const sc = await tool("google_search_console.search_performance").execute({ siteUrl: "https://www.mobilecover.com.bd/products" }, ctx);
+    expect(lastCall(fetchMock).url).toBe("https://www.googleapis.com/webmasters/v3/sites/sc-domain%3Amobilecover.com.bd/searchAnalytics/query");
+    expect((sc.output as { siteUrl: string }).siteUrl).toBe("sc-domain:mobilecover.com.bd");
+
+    await tool("google_analytics.run_report").execute({ property: "mobilecover.com.bd" }, ctx);
+    expect(lastCall(fetchMock).url).toBe("https://analyticsdata.googleapis.com/v1beta/properties/111111:runReport");
+  });
+
+  it("explains when a website has nothing linked yet", async () => {
+    scope.current = linked;
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await expect(tool("google_search_console.search_performance").execute({ siteUrl: "notlinked.example" }, ctx)).rejects.toThrow(/no Search Console property linked yet/);
+    await expect(tool("google_analytics.run_report").execute({ property: "notlinked.example" }, ctx)).rejects.toThrow(/no Analytics property linked yet/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still sees the whole account until the first website is added", async () => {
+    scope.current = UNRESTRICTED;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(json(sites));
+    const res = await tool("google_search_console.list_sites").execute({}, ctx);
+    expect((res.output as { sites: unknown[]; limitedToWebsites?: boolean }).sites).toHaveLength(2);
+    expect((res.output as { limitedToWebsites?: boolean }).limitedToWebsites).toBeUndefined();
   });
 });
