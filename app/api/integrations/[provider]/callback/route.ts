@@ -5,6 +5,7 @@ import { isAppError } from "@/lib/errors";
 import { isOAuthProvider } from "@/lib/integrations/oauth/providers";
 import { decodeState } from "@/lib/integrations/oauth/state";
 import { exchangeCodeForToken } from "@/lib/integrations/oauth/tokens";
+import { appUrl } from "@/lib/url";
 import { finalizeOAuthConnection } from "@/server/services/integrations";
 
 /**
@@ -15,7 +16,7 @@ import { finalizeOAuthConnection } from "@/server/services/integrations";
  */
 export async function GET(request: Request, ctx: RouteContext<"/api/integrations/[provider]/callback">) {
   const { provider } = await ctx.params;
-  const back = (error?: string) => NextResponse.redirect(new URL(error ? `/integrations?error=${encodeURIComponent(error)}` : "/integrations?connected=1", request.url));
+  const back = (error?: string) => NextResponse.redirect(appUrl(error ? `/integrations?error=${encodeURIComponent(error)}` : "/integrations?connected=1"));
 
   if (!isOAuthProvider(provider)) return back("Unknown integration provider.");
 

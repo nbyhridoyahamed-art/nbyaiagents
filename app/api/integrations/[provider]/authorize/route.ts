@@ -5,6 +5,7 @@ import { isAppError } from "@/lib/errors";
 import { isIntegrationConfigured } from "@/lib/integrations/catalog";
 import { OAUTH_PROVIDERS, PROVIDER_INTEGRATION_KEYS, isOAuthProvider } from "@/lib/integrations/oauth/providers";
 import { encodeState } from "@/lib/integrations/oauth/state";
+import { appUrl } from "@/lib/url";
 
 /**
  * GET /api/integrations/{provider}/authorize — starts the OAuth consent flow.
@@ -13,7 +14,7 @@ import { encodeState } from "@/lib/integrations/oauth/state";
  */
 export async function GET(request: Request, ctx: RouteContext<"/api/integrations/[provider]/authorize">) {
   const { provider } = await ctx.params;
-  const back = (error?: string) => NextResponse.redirect(new URL(error ? `/integrations?error=${encodeURIComponent(error)}` : "/integrations", request.url));
+  const back = (error?: string) => NextResponse.redirect(appUrl(error ? `/integrations?error=${encodeURIComponent(error)}` : "/integrations"));
 
   if (!isOAuthProvider(provider)) return back("Unknown integration provider.");
 
@@ -37,7 +38,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/integrations
 
     return NextResponse.redirect(url);
   } catch (err) {
-    if (isAppError(err) && err.code === "UNAUTHENTICATED") return NextResponse.redirect(new URL("/login", request.url));
+    if (isAppError(err) && err.code === "UNAUTHENTICATED") return NextResponse.redirect(appUrl("/login?next=%2Fintegrations"));
     return back(isAppError(err) ? err.message : "Couldn't start the connection. Please try again.");
   }
 }
