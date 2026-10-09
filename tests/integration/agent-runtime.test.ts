@@ -1,5 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import type { ContentPart, GenerateRequest } from "@/lib/ai/types";
 import { runAgentInline } from "@/server/runtime/agent-runtime";
 import { decideApproval } from "@/server/services/approvals";
 import { executeTool } from "@/server/tools/executor";
@@ -193,6 +195,78 @@ describe("agent runtime — limits, output and escalation", () => {
     });
     expect(run.status).toBe("WAITING");
     expect(run.escalated).toBe(true);
+  });
+});
+
+describe("agent runtime — time limit", () => {
+  /** Rewrites a paused run's saved state, the way a long wait for a human would have left it. */
+  async function ageRun(runId: string, patch: Record<string, unknown>) {
+    const row = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
+    await prisma.agentRun.update({ where: { id: runId }, data: { state: { ...(row.state as Record<string, unknown>), ...patch } as Prisma.InputJsonValue } });
+  }
+
+  /** Behaves like the real SDK: rejects as soon as the run's signal fires, otherwise answers after `ms`. */
+  const answerAfter = (ms: number, content: ContentPart[]) => async (req: GenerateRequest) => {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, ms);
+      req.signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new Error("Request was aborted."));
+      });
+    });
+    return content;
+  };
+
+  async function pausedForApproval(secondStep: (req: GenerateRequest) => Promise<ContentPart[]>) {
+    const { org, user, actor } = await createFixtureOrg();
+    const agent = await createFixtureAgent(actor, { "mock_email.send_email": "REQUIRE_APPROVAL" });
+    restore = useScriptedModel([() => [call("mock_email__send_email", { to: "a@b.test", subject: "Hi", body: "Hi" }, "c1")], secondStep]).restore;
+    const run = await runAgentInline(org.id, agent.id, { input: "Email them", mode: "LIVE" });
+    expect(run.status).toBe("AWAITING_APPROVAL");
+    const approve = async () => {
+      const approval = await prisma.approval.findFirstOrThrow({ where: { agentRunId: run.id } });
+      await decideApproval({ ...actor, userId: user.id }, approval.id, "APPROVED");
+      await drainJobs();
+      return prisma.agentRun.findUniqueOrThrow({ where: { id: run.id } });
+    };
+    return { run, approve };
+  }
+
+  it("doesn't charge the time spent waiting for approval to the run", async () => {
+    // One second is all a clock that counted the wait would leave this model call.
+    const { run, approve } = await pausedForApproval(answerAfter(1300, [text("Email sent.")]));
+
+    await ageRun(run.id, { startedAt: Date.now() - 45 * 60_000 }); // the human takes 45 minutes to answer
+    const done = await approve();
+
+    expect(done.error).toBeNull();
+    expect(done.status).toBe("COMPLETED");
+    expect(done.output).toBe("Email sent.");
+  });
+
+  it("stops a run that has used up its working time, and says so", async () => {
+    const { run, approve } = await pausedForApproval(answerAfter(5000, [text("Too late.")]));
+
+    await ageRun(run.id, { activeMs: 11 * 60_000 }); // it had already been working for 11 of its 10 minutes
+    const done = await approve();
+
+    expect(done.status).toBe("FAILED");
+    expect(done.error).toBe("The run hit its time limit."); // not "The AI provider failed: Request was aborted."
+    expect(done.escalated).toBe(true);
+  });
+
+  it("keeps a run that paused before working time was tracked going", async () => {
+    const { run, approve } = await pausedForApproval(answerAfter(1300, [text("Email sent.")]));
+
+    // Runs saved by the previous version have neither field.
+    const row = await prisma.agentRun.findUniqueOrThrow({ where: { id: run.id } });
+    const legacy: Record<string, unknown> = { ...(row.state as Record<string, unknown>), startedAt: Date.now() - 45 * 60_000 };
+    delete legacy.activeMs;
+    delete legacy.resumedAt;
+    await prisma.agentRun.update({ where: { id: run.id }, data: { state: legacy as Prisma.InputJsonValue } });
+    const done = await approve();
+
+    expect(done.status).toBe("COMPLETED");
   });
 });
 

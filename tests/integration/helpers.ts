@@ -55,14 +55,14 @@ export async function createFixtureAgent(actor: Actor, grants: Record<string, "A
  * Scripted model: returns queued responses in order. Each script entry is a
  * function of the request so tests can assert on what the runtime sent.
  */
-export function useScriptedModel(script: ((req: GenerateRequest) => ContentPart[])[]) {
+export function useScriptedModel(script: ((req: GenerateRequest) => ContentPart[] | Promise<ContentPart[]>)[]) {
   const calls: GenerateRequest[] = [];
   const provider: AIProvider = {
     kind: "OFFLINE",
     async generate(req): Promise<GenerateResponse> {
       calls.push(req);
       const step = script.shift();
-      const content = step ? step(req) : [{ type: "text", text: "Done." } as ContentPart];
+      const content = step ? await step(req) : [{ type: "text", text: "Done." } as ContentPart];
       return {
         content,
         stopReason: content.some((c) => c.type === "tool_call") ? "tool_use" : "end",

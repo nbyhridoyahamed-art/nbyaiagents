@@ -81,10 +81,25 @@ interface RunState {
   pending?: PendingAction;
   seq: number;
   startedAt: number;
+  /** Working time spent in earlier stretches of this run (before it paused for a human). Absent on runs paused before this was tracked. */
+  activeMs?: number;
+  /** When the current stretch of work began; cleared while the run waits for a human. */
+  resumedAt?: number;
 }
 
+/** How long a run may spend actually working — time spent waiting for a human to approve or answer doesn't count. */
 const RUN_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_DELEGATION_DEPTH = 2;
+
+/** Working time used so far: finished stretches plus the one in progress. */
+export function workedMs(state: Pick<RunState, "activeMs" | "resumedAt">, now = Date.now()): number {
+  return (state.activeMs ?? 0) + (state.resumedAt === undefined ? 0 : Math.max(0, now - state.resumedAt));
+}
+
+/** Working time still available to this run. */
+export function runTimeLeftMs(state: Pick<RunState, "activeMs" | "resumedAt">, now = Date.now()): number {
+  return RUN_TIMEOUT_MS - workedMs(state, now);
+}
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -149,6 +164,8 @@ export async function resumeAgentRun(runId: string, approvalId: string) {
   if (claimed.count === 0) return;
   const run = await prisma.agentRun.findUniqueOrThrow({ where: { id: runId } });
   const state = run.state as unknown as RunState;
+  // A human has answered: the working clock starts again from now, not from when the run first began.
+  state.resumedAt = Date.now();
   const pending = state.pending;
   if (!pending || pending.approvalId !== approvalId) {
     await prisma.agentRun.update({ where: { id: runId }, data: { status: run.status === "RUNNING" ? "WAITING" : run.status } });
@@ -280,6 +297,8 @@ async function initialise(orgId: string, agentId: string, runId: string, request
     counters: { steps: 0, toolCalls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, failures: 0, repairs: 0 },
     seq: 0,
     startedAt: Date.now(),
+    activeMs: 0,
+    resumedAt: Date.now(),
   };
 
   await prisma.agentRun.update({
@@ -306,7 +325,7 @@ async function loop(runId: string, orgId: string, agentId: string, state: RunSta
   const snapshot = state.snapshot;
   const limits = snapshot.limits;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, RUN_TIMEOUT_MS - (Date.now() - state.startedAt)));
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, runTimeLeftMs(state)));
   try {
     while (true) {
       const current = await prisma.agentRun.findUnique({ where: { id: runId }, select: { status: true } });
@@ -347,6 +366,11 @@ async function loop(runId: string, orgId: string, agentId: string, state: RunSta
           offlineHints: { knowledge: state.hints, agentName: snapshot.name, taskText: state.request.input },
         });
       } catch (err) {
+        if (controller.signal.aborted) {
+          // The run's own working-time limit cut the request off — that isn't the provider's fault, so say so.
+          await completeStep(modelStep, "FAILED", undefined, "Stopped at the run's time limit.", Date.now() - started);
+          return escalate(runId, orgId, agentId, state, "The run hit its time limit.", true);
+        }
         const message = isAppError(err) ? err.message : `The AI provider failed: ${String((err as Error)?.message ?? err).slice(0, 300)}`;
         await completeStep(modelStep, "FAILED", undefined, message, Date.now() - started);
         return finish(runId, state, "FAILED", { error: message });
@@ -660,6 +684,9 @@ async function escalate(runId: string, orgId: string, agentId: string, state: Ru
 }
 
 async function pause(runId: string, orgId: string, agentId: string, state: RunState, status: RunStatus, message: string, approvalId: string) {
+  // Waiting for a human isn't working time: bank what this stretch used and stop the clock until they answer.
+  state.activeMs = workedMs(state);
+  state.resumedAt = undefined;
   await prisma.agentRun.update({ where: { id: runId }, data: { status, state: state as unknown as Prisma.InputJsonValue, ...usageFields(state) } });
   await setAgentStatus(agentId, status === "AWAITING_APPROVAL" ? "APPROVAL" : "WAITING", message);
   await hookTaskStatus(state.request.taskId ?? null, status === "AWAITING_APPROVAL" ? "AWAITING_APPROVAL" : "WAITING", message);

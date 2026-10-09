@@ -13,6 +13,7 @@ import {
   instructionsSchema,
   limitsSchema,
   modelConfigSchema,
+  onlySent,
   toolAssignmentSchema,
 } from "@/lib/agents/schema";
 import {
@@ -51,7 +52,8 @@ const profileSchema = z.object({
 export async function updateAgentProfileAction(input: z.input<typeof profileSchema>): Promise<ActionResult> {
   return runAction(profileSchema, input, async ({ agentId, profile }) => {
     const ctx = await requireOrgContext("agents:write");
-    await updateAgentProfile(userActor(ctx.org.id, ctx.user.id), agentId, profile);
+    // `profile` has had defaults filled in for anything the form didn't send; only pass on what it did send.
+    await updateAgentProfile(userActor(ctx.org.id, ctx.user.id), agentId, onlySent(profile, input.profile));
     revalidatePath(`/agents/${agentId}`);
   });
 }

@@ -104,4 +104,17 @@ export const createAgentSchema = agentIdentitySchema
 export type CreateAgentInput = z.input<typeof createAgentSchema>;
 export type CreateAgentData = z.output<typeof createAgentSchema>;
 
+/**
+ * Keeps only the keys a caller actually sent from the result of parsing a partial update.
+ *
+ * `schema.partial()` is not a patch: Zod 4 still fills every omitted field with its `.default(...)`, so a save that
+ * only named `model` and `limits` parsed into a blank mission, no responsibilities or goals, the "professional"
+ * personality, medium priority and the first avatar colour — and writing that back wiped the employee's role.
+ * An explicit `""` or `[]` still counts as sent, so a field can be cleared on purpose.
+ */
+export function onlySent<T extends object>(parsed: T, sent: object): Partial<T> {
+  const given = sent as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(parsed).filter(([key]) => given[key] !== undefined)) as Partial<T>;
+}
+
 export const AVATAR_COLORS = ["#5B5FEF", "#7C5CFC", "#12B76A", "#F79009", "#2E90FA", "#EE46BC", "#0E9384", "#475467", "#DD2590", "#6172F3"];

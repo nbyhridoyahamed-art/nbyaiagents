@@ -6,7 +6,7 @@ import { AppError, notFound } from "@/lib/errors";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { AgentStatus, InstructionSection } from "@/lib/generated/prisma/enums";
 import type { Actor } from "@/lib/auth/actor";
-import { createAgentSchema, type CreateAgentData, type CreateAgentInput, type InstructionKey } from "@/lib/agents/schema";
+import { createAgentSchema, onlySent, type CreateAgentData, type CreateAgentInput, type InstructionKey } from "@/lib/agents/schema";
 import type { AgentSnapshot } from "@/lib/agents/snapshot";
 import { getAgentTemplate } from "@/lib/templates/agents";
 import { PROVIDER_LABELS, getModel } from "@/lib/ai/models";
@@ -179,9 +179,11 @@ async function bumpDraft(tx: Prisma.TransactionClient, agentId: string) {
   }
 }
 
+/** Changes only the fields named in `input`; everything else about the employee is left exactly as it was. */
 export async function updateAgentProfile(actor: Actor, agentId: string, input: Partial<CreateAgentInput>) {
   await getAgent(actor.orgId, agentId);
-  const data = createAgentSchema.partial().parse(input);
+  const data = onlySent(createAgentSchema.partial().parse(input), input);
+  const limits = data.limits && input.limits ? onlySent(data.limits, input.limits) : undefined;
   if (data.departmentId) await assertOwned(actor.orgId, { departmentId: data.departmentId, knowledgeBaseIds: [], tools: [], workflowIds: [] });
   await prisma.$transaction(async (tx) => {
     await tx.agent.update({
@@ -199,7 +201,7 @@ export async function updateAgentProfile(actor: Actor, agentId: string, input: P
         priority: data.priority,
         personality: data.personality,
         personalityNotes: data.personalityNotes,
-        ...data.limits,
+        ...limits,
       },
     });
     if (data.model) {
