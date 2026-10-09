@@ -10,6 +10,7 @@ import { recordActivity, writeAudit } from "@/server/services/audit";
 import { encryptSecret, secretHint } from "@/lib/security/crypto";
 import { PROVIDER_INTEGRATION_KEYS } from "@/lib/integrations/oauth/providers";
 import { encodeBundle } from "@/lib/integrations/oauth/tokens";
+import * as tavilyClient from "@/lib/integrations/search/client";
 import type { OAuthTokenBundle } from "@/lib/integrations/oauth/types";
 
 export async function listIntegrations(orgId: string) {
@@ -122,6 +123,33 @@ export async function connectIntegration(actor: Actor, key: string) {
     link: "/integrations",
   });
   return connection;
+}
+
+/**
+ * Web Search (Tavily): the company's own API key, saved encrypted and checked against Tavily first.
+ * It takes precedence over the optional platform-wide TAVILY_API_KEY when the tools run.
+ */
+export async function connectWebSearch(actor: Actor, input: { apiKey: string }) {
+  const info = getIntegration("web_search");
+  if (!info) throw notFound("Integration");
+  await assertIntegrationEnabled("web_search");
+  const apiKey = input.apiKey.trim();
+  if (apiKey.length < 16 || /\s/.test(apiKey)) {
+    throw new AppError("VALIDATION", "That doesn't look like a Tavily API key.", { fieldErrors: { apiKey: "Paste the whole key. It starts with tvly-." } });
+  }
+  if ((await tavilyClient.verifyApiKey(apiKey)) === "rejected") {
+    throw new AppError("VALIDATION", "Tavily didn't accept that key.", { fieldErrors: { apiKey: "Tavily rejected this key. Copy it again from app.tavily.com." } });
+  }
+
+  const { conn, toolCount } = await prisma.$transaction(async (tx) => {
+    const cred = await tx.toolCredential.create({
+      data: { orgId: actor.orgId, name: "Web Search — Tavily", type: "API_KEY", ciphertext: encryptSecret(apiKey), hint: secretHint(apiKey), createdById: actor.userId ?? null },
+    });
+    return upsertConnectionAndTools(tx, actor, "web_search", info, { isSimulated: false, credentialId: cred.id });
+  });
+  await writeAudit({ orgId: actor.orgId, actorType: actor.type, actorUserId: actor.userId, action: "integration.connect", entityType: "IntegrationConnection", entityId: conn.id, metadata: { key: "web_search" } });
+  await recordActivity({ orgId: actor.orgId, category: "INTEGRATION", actorType: "USER", actorUserId: actor.userId, summary: "Web Search connected.", detail: `${toolCount} tools available to AI employees.`, link: "/integrations" });
+  return conn;
 }
 
 /** Shopify: a per-org credential (shop domain + Admin API access token), no OAuth. */

@@ -113,6 +113,7 @@ Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI
   - redirects are re-validated and never forward credentials across origins;
   - size and time limits.
 - OAuth providers (Google, HubSpot, …) appear as "Not configured" until their client IDs are set.
+- **Web Search (Tavily)**: an admin pastes their own Tavily API key on the Integrations page. It is checked with Tavily, stored encrypted per company and takes precedence over the optional platform-wide `TAVILY_API_KEY`. After connecting, grant the Web search tools to the employees who need them.
 - Platform admins can switch any integration off for everyone (`/admin/catalog`).
 
 ## Queues and background work

@@ -7,7 +7,7 @@ import { requireOrgContext } from "@/lib/auth/context";
 import { userActor } from "@/lib/auth/actor";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { capabilityKeys } from "@/lib/policies/types";
-import { connectIntegration, connectShopify, disconnectIntegration } from "@/server/services/integrations";
+import { connectIntegration, connectShopify, connectWebSearch, disconnectIntegration } from "@/server/services/integrations";
 import { createCredential, revokeCredential, rotateCredential } from "@/server/services/credentials";
 import { createCustomTool, deleteTool, setToolEnabled, setToolRisk, testTool, updateCustomTool } from "@/server/services/tools";
 import { redact } from "@/lib/security/redact";
@@ -37,6 +37,17 @@ export async function connectShopifyAction(input: z.input<typeof shopifyConnectS
   return runAction(shopifyConnectSchema, input, async (d) => {
     const ctx = await requireOrgContext("tools:manage");
     await connectShopify(userActor(ctx.org.id, ctx.user.id), d);
+    revalidatePath("/integrations");
+  });
+}
+
+const webSearchConnectSchema = z.object({ apiKey: z.string().trim().min(1, "Paste your Tavily API key.").max(300) });
+
+export async function connectWebSearchAction(input: z.input<typeof webSearchConnectSchema>): Promise<ActionResult> {
+  return runAction(webSearchConnectSchema, input, async (d) => {
+    const ctx = await requireOrgContext("tools:manage");
+    await enforceRateLimit("toolTest", `${ctx.org.id}:${ctx.user.id}`);
+    await connectWebSearch(userActor(ctx.org.id, ctx.user.id), d);
     revalidatePath("/integrations");
   });
 }

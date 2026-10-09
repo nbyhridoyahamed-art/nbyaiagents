@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/common/confirm-button";
 import { useAction } from "@/hooks/use-action";
 import type { IntegrationInfo } from "@/lib/integrations/catalog";
-import { connectIntegrationAction, connectShopifyAction, disconnectIntegrationAction } from "../tools/actions";
+import { connectIntegrationAction, connectShopifyAction, connectWebSearchAction, disconnectIntegrationAction } from "../tools/actions";
 
 const ICONS: Record<string, LucideIcon> = {
   contact: Contact,
@@ -100,7 +100,10 @@ function StatusBadge({ i }: { i: Row }) {
   if (i.connection?.status === "NEEDS_REAUTH") return <Badge className="bg-warning-soft text-warning-text">Needs reauthorization</Badge>;
   if (i.connection?.status === "ERROR") return <Badge className="bg-danger-soft text-danger-text">Error</Badge>;
   if (i.connection?.status === "DISCONNECTED") return <Badge variant="secondary">Disconnected</Badge>;
-  if (i.availability === "requires_setup") return i.configured ? <Badge variant="outline">Available</Badge> : <Badge variant="secondary">Not configured</Badge>;
+  if (i.availability === "requires_setup") {
+    if (i.key === "web_search" && !i.configured) return <Badge variant="secondary">Needs API key</Badge>;
+    return i.configured ? <Badge variant="outline">Available</Badge> : <Badge variant="secondary">Not configured</Badge>;
+  }
   if (i.availability === "coming_soon") return <Badge variant="secondary">Coming soon</Badge>;
   return <Badge variant="outline">Available</Badge>;
 }
@@ -157,11 +160,60 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
           </Button>
         ) : i.availability === "requires_setup" && canManage && i.authType === "credential" ? (
           <ShopifyConnectForm />
+        ) : i.key === "web_search" && canManage && !i.configured ? (
+          <WebSearchConnectForm />
         ) : i.availability === "requires_setup" ? (
           <span className="text-right text-[11px] text-text-muted">Operator must set {i.setupEnv?.[0]}</span>
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** Web Search needs only the company's own Tavily API key (the platform operator may also set one for everyone). */
+function WebSearchConnectForm() {
+  const [open, setOpen] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const connect = useAction(connectWebSearchAction, { success: "Web Search connected." });
+
+  if (!open) {
+    return (
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Connect
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="flex w-full flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void connect.run({ apiKey }).then((res) => {
+          if (res.ok) {
+            setApiKey("");
+            setOpen(false);
+          }
+        });
+      }}
+    >
+      <Input type="password" autoComplete="off" placeholder="tvly-…" value={apiKey} onChange={(e) => setApiKey(e.target.value)} aria-label="Tavily API key" required />
+      {connect.fieldErrors.apiKey && <p className="text-xs text-danger-text">{connect.fieldErrors.apiKey}</p>}
+      <p className="text-xs text-text-muted">
+        Get a free key at{" "}
+        <a href="https://app.tavily.com" target="_blank" rel="noopener noreferrer" className="underline">
+          app.tavily.com
+        </a>
+        . It&apos;s checked with Tavily, stored encrypted and never shown again.
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={connect.pending}>
+          {connect.pending && <Loader2 className="animate-spin" aria-hidden />} Connect
+        </Button>
+      </div>
+    </form>
   );
 }
 
