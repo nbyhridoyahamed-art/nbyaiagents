@@ -42,6 +42,12 @@ export function Field({ label, name, hint, error, multiline, rows = 4, className
           required={props.required}
           disabled={props.disabled}
           maxLength={props.maxLength}
+          autoFocus={props.autoFocus}
+          readOnly={props.readOnly}
+          // The handlers are typed for <input>; a textarea raises the same events. Dropping them (as this used to)
+          // left every multiline field in the app unable to report what was typed.
+          onChange={props.onChange as unknown as React.ChangeEventHandler<HTMLTextAreaElement> | undefined}
+          onBlur={props.onBlur as unknown as React.FocusEventHandler<HTMLTextAreaElement> | undefined}
         />
       ) : (
         <Input {...shared} {...props} className="h-10" />

@@ -155,8 +155,17 @@ function AddSources({ collectionId, externalSources }: { collectionId: string; e
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
   const [manual, setManual] = useState({ title: "", content: "" });
+  // The content box is uncontrolled; remounting it (new key) is how it is emptied after a save. The key must only change
+  // then, never while typing, or the box would lose focus after the first character.
+  const [manualKey, setManualKey] = useState(0);
   const [web, setWeb] = useState({ url: "", kind: "WEBSITE" as "WEBSITE" | "SITEMAP" });
-  const addManual = useAction(addManualDocumentAction, { success: "Document saved. Indexing…", onSuccess: () => setManual({ title: "", content: "" }) });
+  const addManual = useAction(addManualDocumentAction, {
+    success: "Document saved. Indexing…",
+    onSuccess: () => {
+      setManual({ title: "", content: "" });
+      setManualKey((k) => k + 1);
+    },
+  });
   const addWeb = useAction(addWebSourceAction, { success: (d) => `Added ${d.pages} page${d.pages === 1 ? "" : "s"}. Indexing…`, onSuccess: () => setWeb({ ...web, url: "" }) });
 
   async function upload(files: FileList | File[]) {
@@ -237,7 +246,7 @@ function AddSources({ collectionId, externalSources }: { collectionId: string; e
             }}
           >
             <Field label="Title" name="title" value={manual.title} onChange={(e) => setManual({ ...manual, title: e.target.value })} error={addManual.fieldErrors.title} placeholder="Refund Policy" />
-            <Field label="Content" name="content" multiline rows={8} defaultValue={manual.content} key={manual.content === "" ? "empty" : "filled"} onChange={(e) => setManual({ ...manual, content: e.target.value })} error={addManual.fieldErrors.content} placeholder="Markdown is supported. Use headings (## Section) to help retrieval." />
+            <Field label="Content" name="content" multiline rows={8} defaultValue={manual.content} key={manualKey} onChange={(e) => setManual({ ...manual, content: e.target.value })} error={addManual.fieldErrors.content} placeholder="Markdown is supported. Use headings (## Section) to help retrieval." />
             <Button type="submit" className="justify-self-end" disabled={addManual.pending}>
               {addManual.pending && <Loader2 className="animate-spin" aria-hidden />} Save document
             </Button>
