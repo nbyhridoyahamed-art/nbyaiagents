@@ -39,6 +39,8 @@ export default defineConfig({
       EMAIL_PROVIDER: "file",
       EMAIL_FILE_DIR: E2E.mailDir,
       EMBEDDED_WORKER: "true",
+      // The acceptance scenario uses the simulated demo integrations, which production hides by default.
+      SHOW_DEMO_INTEGRATIONS: "true",
       // The suite signs up several users from one machine; production limits stay unchanged.
       RATE_LIMIT_SCALE: "20",
       // No real AI calls in tests: employees use the offline demo model.

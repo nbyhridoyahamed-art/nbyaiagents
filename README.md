@@ -106,13 +106,15 @@ Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI
 
 ## Integrations and tools
 
-- **Simulated integrations** (`lib/integrations/mock`) store records inside Virtual Desks only. Sending an email records it in a mock outbox and never delivers it.
+- **Simulated integrations** (`lib/integrations/mock`) store records inside Virtual Desks only. Sending an email records it in a mock outbox and never delivers it. They are shown in development and hidden in production; set `SHOW_DEMO_INTEGRATIONS=true` to show them anyway. A workspace that already connected one keeps seeing it.
 - **Custom REST tools**: build them in the UI with typed parameters, auth (bearer, API key, basic) and encrypted credentials. Requests go through `safeHttpRequest`:
   - http/https only;
   - private, loopback and metadata ranges blocked, checked at connect time;
   - redirects are re-validated and never forward credentials across origins;
   - size and time limits.
 - OAuth providers (Google, HubSpot, …) appear as "Not configured" until their client IDs are set.
+- **Google** is one consent for Gmail, Calendar, Sheets, **Search Console** (search performance, URL inspection) and **Analytics** (GA4 properties and reports), all read-only apart from Gmail and Calendar actions. In the same Google Cloud project enable the Gmail, Google Calendar, Google Sheets, Google Search Console, Google Analytics Data and Google Analytics Admin APIs. Admins who connected Google before these were added reconnect once to grant the new permissions.
+- **GitHub**: an admin pastes a fine-grained personal access token. It is checked with GitHub and stored encrypted per company. Tools read repositories, issues, pull requests and files, and can open issues and comment (those two are medium risk and publish to anyone who can see the repository, so grant them with approval).
 - **Web Search (Tavily)**: an admin pastes their own Tavily API key on the Integrations page. It is checked with Tavily, stored encrypted per company and takes precedence over the optional platform-wide `TAVILY_API_KEY`. After connecting, grant the Web search tools to the employees who need them.
 - Platform admins can switch any integration off for everyone (`/admin/catalog`).
 

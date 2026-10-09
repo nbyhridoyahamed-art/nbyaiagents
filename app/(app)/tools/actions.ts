@@ -7,7 +7,7 @@ import { requireOrgContext } from "@/lib/auth/context";
 import { userActor } from "@/lib/auth/actor";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { capabilityKeys } from "@/lib/policies/types";
-import { connectIntegration, connectShopify, connectWebSearch, disconnectIntegration } from "@/server/services/integrations";
+import { connectGitHub, connectIntegration, connectShopify, connectWebSearch, disconnectIntegration } from "@/server/services/integrations";
 import { createCredential, revokeCredential, rotateCredential } from "@/server/services/credentials";
 import { createCustomTool, deleteTool, setToolEnabled, setToolRisk, testTool, updateCustomTool } from "@/server/services/tools";
 import { redact } from "@/lib/security/redact";
@@ -48,6 +48,17 @@ export async function connectWebSearchAction(input: z.input<typeof webSearchConn
     const ctx = await requireOrgContext("tools:manage");
     await enforceRateLimit("toolTest", `${ctx.org.id}:${ctx.user.id}`);
     await connectWebSearch(userActor(ctx.org.id, ctx.user.id), d);
+    revalidatePath("/integrations");
+  });
+}
+
+const gitHubConnectSchema = z.object({ token: z.string().trim().min(1, "Paste your GitHub token.").max(500) });
+
+export async function connectGitHubAction(input: z.input<typeof gitHubConnectSchema>): Promise<ActionResult> {
+  return runAction(gitHubConnectSchema, input, async (d) => {
+    const ctx = await requireOrgContext("tools:manage");
+    await enforceRateLimit("toolTest", `${ctx.org.id}:${ctx.user.id}`);
+    await connectGitHub(userActor(ctx.org.id, ctx.user.id), d);
     revalidatePath("/integrations");
   });
 }

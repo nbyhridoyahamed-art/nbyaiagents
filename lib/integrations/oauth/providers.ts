@@ -1,9 +1,9 @@
 import type { ProviderOAuthConfig } from "@/lib/integrations/oauth/types";
 
 /**
- * One OAuth app per provider, shared by every org. Gmail, Google Calendar and
- * Google Sheets are three catalog entries but request all their scopes in a
- * single Google consent screen — see app/api/integrations/[provider]/callback.
+ * One OAuth app per provider, shared by every org. Gmail, Google Calendar, Google
+ * Sheets, Search Console and Analytics are separate catalog entries but request all
+ * their scopes in a single Google consent screen — see app/api/integrations/[provider]/callback.
  */
 export const OAUTH_PROVIDERS: Record<"google" | "hubspot", ProviderOAuthConfig> = {
   google: {
@@ -16,6 +16,8 @@ export const OAUTH_PROVIDERS: Record<"google" | "hubspot", ProviderOAuthConfig> 
       "https://www.googleapis.com/auth/calendar.events",
       "https://www.googleapis.com/auth/calendar.readonly",
       "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/webmasters.readonly",
+      "https://www.googleapis.com/auth/analytics.readonly",
     ],
     clientIdEnv: "GOOGLE_OAUTH_CLIENT_ID",
     clientSecretEnv: "GOOGLE_OAUTH_CLIENT_SECRET",
@@ -34,7 +36,7 @@ export const OAUTH_PROVIDERS: Record<"google" | "hubspot", ProviderOAuthConfig> 
 
 /** Catalog keys that share one OAuth grant for a given provider (see providers above). */
 export const PROVIDER_INTEGRATION_KEYS: Record<"google" | "hubspot", string[]> = {
-  google: ["gmail", "google_calendar", "google_sheets"],
+  google: ["gmail", "google_calendar", "google_sheets", "google_search_console", "google_analytics"],
   hubspot: ["hubspot"],
 };
 

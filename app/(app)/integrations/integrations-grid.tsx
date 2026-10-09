@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
+  BarChart3,
   Calendar,
   Code2,
   Contact,
@@ -27,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/common/confirm-button";
 import { useAction } from "@/hooks/use-action";
 import type { IntegrationInfo } from "@/lib/integrations/catalog";
-import { connectIntegrationAction, connectShopifyAction, connectWebSearchAction, disconnectIntegrationAction } from "../tools/actions";
+import { connectGitHubAction, connectIntegrationAction, connectShopifyAction, connectWebSearchAction, disconnectIntegrationAction } from "../tools/actions";
 
 const ICONS: Record<string, LucideIcon> = {
   contact: Contact,
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   "file-text": FileText,
   github: GitBranch,
   gitlab: GitMerge,
+  "bar-chart": BarChart3,
 };
 
 type Row = IntegrationInfo & {
@@ -51,7 +53,7 @@ type Row = IntegrationInfo & {
   connection: { id: string; status: string; isSimulated: boolean; connectedAt: string; tools: number; lastError: string | null } | null;
 };
 
-const CATEGORIES = ["CRM", "Communication", "Productivity", "Data", "Commerce", "Research", "Development", "Custom"] as const;
+const CATEGORIES = ["CRM", "Communication", "Productivity", "Data", "Commerce", "Marketing", "Research", "Development", "Custom"] as const;
 
 /** Surfaces the result of an OAuth/Shopify redirect (?connected=1 | ?error=...) as a toast, then cleans the URL. */
 function useConnectionResultToast() {
@@ -159,7 +161,7 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
             {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
           </Button>
         ) : i.availability === "requires_setup" && canManage && i.authType === "credential" ? (
-          <ShopifyConnectForm />
+          i.key === "github" ? <GitHubConnectForm /> : <ShopifyConnectForm />
         ) : i.key === "web_search" && canManage && !i.configured ? (
           <WebSearchConnectForm />
         ) : i.availability === "requires_setup" ? (
@@ -167,6 +169,53 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** GitHub: the company pastes a fine-grained personal access token (no OAuth app to register). */
+function GitHubConnectForm() {
+  const [open, setOpen] = useState(false);
+  const [token, setToken] = useState("");
+  const connect = useAction(connectGitHubAction, { success: "GitHub connected." });
+
+  if (!open) {
+    return (
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Connect
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="flex w-full flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void connect.run({ token }).then((res) => {
+          if (res.ok) {
+            setToken("");
+            setOpen(false);
+          }
+        });
+      }}
+    >
+      <Input type="password" autoComplete="off" placeholder="github_pat_…" value={token} onChange={(e) => setToken(e.target.value)} aria-label="GitHub access token" required />
+      {connect.fieldErrors.token && <p className="text-xs text-danger-text">{connect.fieldErrors.token}</p>}
+      <p className="text-xs text-text-muted">
+        Create a{" "}
+        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer" className="underline">
+          fine-grained token
+        </a>{" "}
+        limited to the repositories you choose, with Contents (read), Issues (read and write) and Pull requests (read). It&apos;s checked with GitHub, stored encrypted and never shown again.
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={connect.pending}>
+          {connect.pending && <Loader2 className="animate-spin" aria-hidden />} Connect
+        </Button>
+      </div>
+    </form>
   );
 }
 

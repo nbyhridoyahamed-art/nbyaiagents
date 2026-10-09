@@ -3,7 +3,7 @@ import { assertIntegrationEnabled, getDisabled } from "@/server/services/platfor
 import { AppError, notFound } from "@/lib/errors";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { Actor } from "@/lib/auth/actor";
-import { getIntegration, isIntegrationConfigured, INTEGRATIONS } from "@/lib/integrations/catalog";
+import { getIntegration, isIntegrationConfigured, INTEGRATIONS, showDemoIntegrations } from "@/lib/integrations/catalog";
 import { MOCK_SEED } from "@/lib/integrations/mock/tools";
 import { toolsForIntegration, zodToJsonSchema } from "@/lib/tools/registry";
 import { recordActivity, writeAudit } from "@/server/services/audit";
@@ -11,6 +11,7 @@ import { encryptSecret, secretHint } from "@/lib/security/crypto";
 import { PROVIDER_INTEGRATION_KEYS } from "@/lib/integrations/oauth/providers";
 import { encodeBundle } from "@/lib/integrations/oauth/tokens";
 import * as tavilyClient from "@/lib/integrations/search/client";
+import * as githubClient from "@/lib/integrations/github/client";
 import type { OAuthTokenBundle } from "@/lib/integrations/oauth/types";
 
 export async function listIntegrations(orgId: string) {
@@ -18,7 +19,10 @@ export async function listIntegrations(orgId: string) {
     prisma.integrationConnection.findMany({ where: { orgId }, include: { _count: { select: { tools: true } } } }),
     getDisabled("integrations.disabled"),
   ]);
-  return INTEGRATIONS.map((i) => {
+  const showDemos = showDemoIntegrations();
+  // Demo integrations stay visible in a workspace that already connected them, so nothing it uses disappears.
+  const visible = INTEGRATIONS.filter((i) => !i.simulated || showDemos || connections.some((c) => c.integrationKey === i.key));
+  return visible.map((i) => {
     const conn = connections.find((c) => c.integrationKey === i.key);
     return {
       ...i,
@@ -87,9 +91,10 @@ export async function connectIntegration(actor: Actor, key: string) {
   if (!info) throw notFound("Integration");
   await assertIntegrationEnabled(key);
   if (info.availability === "coming_soon") throw new AppError("NOT_CONFIGURED", `${info.name} is coming soon and can't be connected yet.`);
+  if (info.simulated && !showDemoIntegrations()) throw new AppError("NOT_CONFIGURED", `${info.name} is a demo integration and demo integrations are turned off.`);
   if (info.availability === "requires_setup") {
     if (info.authType === "oauth2") throw new AppError("VALIDATION", `${info.name} connects through Google/HubSpot sign-in — use its Connect button on the Integrations page.`);
-    if (info.authType === "credential") throw new AppError("VALIDATION", `${info.name} needs your store's access token — use its Connect form on the Integrations page.`);
+    if (info.authType === "credential") throw new AppError("VALIDATION", `${info.name} needs an access token or API key — use its Connect form on the Integrations page.`);
     if (!isIntegrationConfigured(key)) {
       throw new AppError("NOT_CONFIGURED", `${info.name} is not configured on this platform. The operator must set ${info.setupEnv?.join(" and ") || "the required environment variables"}.`);
     }
@@ -149,6 +154,31 @@ export async function connectWebSearch(actor: Actor, input: { apiKey: string }) 
   });
   await writeAudit({ orgId: actor.orgId, actorType: actor.type, actorUserId: actor.userId, action: "integration.connect", entityType: "IntegrationConnection", entityId: conn.id, metadata: { key: "web_search" } });
   await recordActivity({ orgId: actor.orgId, category: "INTEGRATION", actorType: "USER", actorUserId: actor.userId, summary: "Web Search connected.", detail: `${toolCount} tools available to AI employees.`, link: "/integrations" });
+  return conn;
+}
+
+/** GitHub: a per-org fine-grained access token, checked against GitHub first and stored encrypted. */
+export async function connectGitHub(actor: Actor, input: { token: string }) {
+  const info = getIntegration("github");
+  if (!info) throw notFound("Integration");
+  await assertIntegrationEnabled("github");
+  const token = input.token.trim();
+  if (token.length < 20 || /\s/.test(token)) {
+    throw new AppError("VALIDATION", "That doesn't look like a GitHub token.", { fieldErrors: { token: "Paste the whole token. Fine-grained tokens start with github_pat_." } });
+  }
+  const verified = await githubClient.verifyToken(token);
+  if (verified === "rejected") {
+    throw new AppError("VALIDATION", "GitHub didn't accept that token.", { fieldErrors: { token: "GitHub rejected this token. Check that it hasn't expired and copy it again." } });
+  }
+
+  const { conn, toolCount } = await prisma.$transaction(async (tx) => {
+    const cred = await tx.toolCredential.create({
+      data: { orgId: actor.orgId, name: `GitHub — ${verified.login}`, type: "API_KEY", ciphertext: encryptSecret(token), hint: secretHint(token), createdById: actor.userId ?? null },
+    });
+    return upsertConnectionAndTools(tx, actor, "github", info, { isSimulated: false, credentialId: cred.id, config: { login: verified.login } });
+  });
+  await writeAudit({ orgId: actor.orgId, actorType: actor.type, actorUserId: actor.userId, action: "integration.connect", entityType: "IntegrationConnection", entityId: conn.id, metadata: { key: "github", login: verified.login } });
+  await recordActivity({ orgId: actor.orgId, category: "INTEGRATION", actorType: "USER", actorUserId: actor.userId, summary: `GitHub connected as ${verified.login}.`, detail: `${toolCount} tools available to AI employees.`, link: "/integrations" });
   return conn;
 }
 

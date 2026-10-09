@@ -21,7 +21,7 @@ export type IntegrationAuthType = "oauth2" | "credential" | "platform_key";
 export interface IntegrationInfo {
   key: string;
   name: string;
-  category: "Communication" | "Productivity" | "CRM" | "Data" | "Commerce" | "Development" | "Research" | "Custom";
+  category: "Communication" | "Productivity" | "CRM" | "Data" | "Commerce" | "Marketing" | "Development" | "Research" | "Custom";
   description: string;
   availability: IntegrationAvailability;
   simulated?: boolean;
@@ -51,6 +51,8 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   { key: "google_calendar", name: "Google Calendar", category: "Productivity", description: "Read and create calendar events.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "calendar" },
   { key: "google_drive", name: "Google Drive", category: "Productivity", description: "Search and read files; sync knowledge.", availability: "requires_setup", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "folder" },
   { key: "google_sheets", name: "Google Sheets", category: "Data", description: "Read and write spreadsheet rows.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "sheet" },
+  { key: "google_search_console", name: "Google Search Console", category: "Marketing", description: "Search performance (clicks, impressions, queries, pages) and URL indexing status.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "bar-chart" },
+  { key: "google_analytics", name: "Google Analytics", category: "Marketing", description: "GA4 traffic, audience and conversion reports.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "bar-chart" },
   { key: "hubspot", name: "HubSpot", category: "CRM", description: "Contacts, companies and deals.", availability: "requires_setup", authType: "oauth2", provider: "hubspot", setupEnv: ["HUBSPOT_OAUTH_CLIENT_ID", "HUBSPOT_OAUTH_CLIENT_SECRET"], icon: "contact" },
   { key: "web_search", name: "Web Search", category: "Research", description: "Real web search and company research (Tavily). Connect with your own Tavily API key.", availability: "requires_setup", authType: "platform_key", setupEnv: ["TAVILY_API_KEY"], icon: "search" },
   { key: "shopify", name: "Shopify", category: "Commerce", description: "Orders, products and refunds for your store.", availability: "requires_setup", authType: "credential", setupEnv: [], icon: "shopping-bag" },
@@ -63,7 +65,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   { key: "pipedrive", name: "Pipedrive", category: "CRM", description: "Deals and contacts.", availability: "coming_soon", icon: "contact" },
   { key: "airtable", name: "Airtable", category: "Data", description: "Bases and records.", availability: "coming_soon", icon: "sheet" },
   { key: "woocommerce", name: "WooCommerce", category: "Commerce", description: "Orders and products.", availability: "coming_soon", icon: "shopping-bag" },
-  { key: "github", name: "GitHub", category: "Development", description: "Issues and pull requests.", availability: "coming_soon", icon: "github" },
+  { key: "github", name: "GitHub", category: "Development", description: "Repositories, issues and pull requests. Connect with a fine-grained access token.", availability: "requires_setup", authType: "credential", setupEnv: [], icon: "github" },
   { key: "gitlab", name: "GitLab", category: "Development", description: "Issues and merge requests.", availability: "coming_soon", icon: "gitlab" },
 ];
 
@@ -79,4 +81,15 @@ export function isIntegrationConfigured(key: string): boolean {
   if (info.availability !== "requires_setup") return false;
   if (info.authType === "credential") return true; // per-org secret, nothing platform-level to check
   return (info.setupEnv ?? []).every((name) => !!process.env[name]);
+}
+
+/**
+ * Simulated demo integrations (Mock CRM, Mock Email, …) are shown by default in development and tests,
+ * and hidden in production unless SHOW_DEMO_INTEGRATIONS=true. Read at call time so tests can toggle it.
+ */
+export function showDemoIntegrations(): boolean {
+  const v = process.env.SHOW_DEMO_INTEGRATIONS?.trim().toLowerCase();
+  if (v === "true" || v === "1") return true;
+  if (v === "false" || v === "0") return false;
+  return process.env.NODE_ENV !== "production";
 }

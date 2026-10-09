@@ -3,9 +3,11 @@ import type { JsonSchema } from "@/lib/ai/types";
 import type { ToolDefinition } from "@/lib/tools/types";
 import { MOCK_TOOLS } from "@/lib/integrations/mock/tools";
 import { GOOGLE_TOOLS } from "@/lib/integrations/google/tools";
+import { MARKETING_TOOLS } from "@/lib/integrations/google/marketing-tools";
 import { HUBSPOT_TOOLS } from "@/lib/integrations/hubspot/tools";
 import { SHOPIFY_TOOLS } from "@/lib/integrations/shopify/tools";
 import { SEARCH_TOOLS } from "@/lib/integrations/search/tools";
+import { GITHUB_TOOLS } from "@/lib/integrations/github/tools";
 
 /**
  * Central tool registry (spec §23). Built-in integration tools are registered
@@ -20,7 +22,7 @@ export function registerTool(def: ToolDefinition) {
   REGISTRY.set(def.key, def);
 }
 
-for (const def of [...MOCK_TOOLS, ...GOOGLE_TOOLS, ...HUBSPOT_TOOLS, ...SHOPIFY_TOOLS, ...SEARCH_TOOLS]) registerTool(def);
+for (const def of [...MOCK_TOOLS, ...GOOGLE_TOOLS, ...MARKETING_TOOLS, ...HUBSPOT_TOOLS, ...SHOPIFY_TOOLS, ...SEARCH_TOOLS, ...GITHUB_TOOLS]) registerTool(def);
 
 export function getToolDefinition(key: string): ToolDefinition | undefined {
   return REGISTRY.get(key);

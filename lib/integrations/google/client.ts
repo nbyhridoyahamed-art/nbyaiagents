@@ -4,7 +4,10 @@ async function googleFetch(url: string, accessToken: string, init?: RequestInit)
   const res = await fetch(url, { ...init, headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json", ...init?.headers } });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new AppError("INTEGRATION_ERROR", `Google API returned HTTP ${res.status}: ${body.slice(0, 300)}`);
+    // A 403 from a Google API that was never enabled for the project is a setup step, not a bug.
+    const notEnabled = res.status === 403 && /SERVICE_DISABLED|accessNotConfigured|has not been used in project/i.test(body);
+    const hint = notEnabled ? " The API isn't enabled in the Google Cloud project yet. Enable it in the Google Cloud console, wait a minute and retry." : "";
+    throw new AppError("INTEGRATION_ERROR", `Google API returned HTTP ${res.status}.${hint} ${body.slice(0, 300)}`.replace(/\s+$/, ""));
   }
   if (res.status === 204) return null;
   return res.json();
@@ -92,4 +95,66 @@ export async function sheetsAppendRow(accessToken: string, spreadsheetId: string
     method: "POST",
     body: JSON.stringify({ values: [row] }),
   });
+}
+
+// ── Search Console ───────────────────────────────────────────────────────
+
+export interface SearchConsoleRow {
+  keys: string[];
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function searchConsoleListSites(accessToken: string): Promise<{ siteUrl: string; permissionLevel: string }[]> {
+  const res = (await googleFetch("https://www.googleapis.com/webmasters/v3/sites", accessToken)) as { siteEntry?: { siteUrl: string; permissionLevel: string }[] };
+  return res.siteEntry ?? [];
+}
+
+export async function searchConsoleQuery(
+  accessToken: string,
+  siteUrl: string,
+  request: { startDate: string; endDate: string; dimensions: string[]; rowLimit: number; dimensionFilterGroups?: unknown[] },
+): Promise<SearchConsoleRow[]> {
+  const res = (await googleFetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, accessToken, {
+    method: "POST",
+    body: JSON.stringify(request),
+  })) as { rows?: SearchConsoleRow[] };
+  return res.rows ?? [];
+}
+
+export async function searchConsoleInspectUrl(accessToken: string, siteUrl: string, inspectionUrl: string): Promise<Record<string, unknown>> {
+  const res = (await googleFetch("https://searchconsole.googleapis.com/v1/urlInspection/index:inspect", accessToken, {
+    method: "POST",
+    body: JSON.stringify({ inspectionUrl, siteUrl, languageCode: "en-US" }),
+  })) as { inspectionResult?: Record<string, unknown> };
+  return res.inspectionResult ?? {};
+}
+
+// ── Analytics (GA4) ──────────────────────────────────────────────────────
+
+export async function analyticsListProperties(accessToken: string): Promise<{ account: string; accountName: string; property: string; displayName: string }[]> {
+  const res = (await googleFetch("https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200", accessToken)) as {
+    accountSummaries?: { account: string; displayName?: string; propertySummaries?: { property: string; displayName?: string }[] }[];
+  };
+  return (res.accountSummaries ?? []).flatMap((a) =>
+    (a.propertySummaries ?? []).map((p) => ({ account: a.account, accountName: a.displayName ?? "", property: p.property, displayName: p.displayName ?? "" })),
+  );
+}
+
+export interface AnalyticsReport {
+  dimensionHeaders?: { name: string }[];
+  metricHeaders?: { name: string }[];
+  rows?: { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] }[];
+  totals?: { metricValues?: { value: string }[] }[];
+  rowCount?: number;
+}
+
+export async function analyticsRunReport(
+  accessToken: string,
+  property: string,
+  request: { dateRanges: { startDate: string; endDate: string }[]; dimensions: { name: string }[]; metrics: { name: string }[]; limit: string; orderBys?: unknown[]; metricAggregations?: string[] },
+): Promise<AnalyticsReport> {
+  return (await googleFetch(`https://analyticsdata.googleapis.com/v1beta/${property}:runReport`, accessToken, { method: "POST", body: JSON.stringify(request) })) as AnalyticsReport;
 }
