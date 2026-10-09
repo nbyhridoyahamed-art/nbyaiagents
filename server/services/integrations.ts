@@ -8,11 +8,11 @@ import { MOCK_SEED } from "@/lib/integrations/mock/tools";
 import { toolsForIntegration, zodToJsonSchema } from "@/lib/tools/registry";
 import { recordActivity, writeAudit } from "@/server/services/audit";
 import { encryptSecret, secretHint } from "@/lib/security/crypto";
-import { PROVIDER_INTEGRATION_KEYS } from "@/lib/integrations/oauth/providers";
+import { OAUTH_PROVIDERS, PROVIDER_INTEGRATION_KEYS } from "@/lib/integrations/oauth/providers";
 import { encodeBundle } from "@/lib/integrations/oauth/tokens";
 import * as tavilyClient from "@/lib/integrations/search/client";
 import * as githubClient from "@/lib/integrations/github/client";
-import type { OAuthTokenBundle } from "@/lib/integrations/oauth/types";
+import type { OAuthProviderId, OAuthTokenBundle } from "@/lib/integrations/oauth/types";
 
 export async function listIntegrations(orgId: string) {
   const [connections, disabled] = await Promise.all([
@@ -83,7 +83,7 @@ async function upsertConnectionAndTools(
  * Connects an integration directly (no external handshake): simulated demo
  * integrations, and real "platform key" integrations (e.g. Web Search) where
  * one operator-set key is shared by every org. OAuth providers (Google,
- * HubSpot) connect via /api/integrations/{provider}/authorize instead; Shopify
+ * HubSpot, GitHub) connect via /api/integrations/{provider}/authorize instead; Shopify
  * connects via connectShopify() below (it takes a per-org credential).
  */
 export async function connectIntegration(actor: Actor, key: string) {
@@ -93,7 +93,7 @@ export async function connectIntegration(actor: Actor, key: string) {
   if (info.availability === "coming_soon") throw new AppError("NOT_CONFIGURED", `${info.name} is coming soon and can't be connected yet.`);
   if (info.simulated && !showDemoIntegrations()) throw new AppError("NOT_CONFIGURED", `${info.name} is a demo integration and demo integrations are turned off.`);
   if (info.availability === "requires_setup") {
-    if (info.authType === "oauth2") throw new AppError("VALIDATION", `${info.name} connects through Google/HubSpot sign-in — use its Connect button on the Integrations page.`);
+    if (info.authType === "oauth2") throw new AppError("VALIDATION", `${info.name} connects through a sign-in window — use its Connect button on the Integrations page.`);
     if (info.authType === "credential") throw new AppError("VALIDATION", `${info.name} needs an access token or API key — use its Connect form on the Integrations page.`);
     if (!isIntegrationConfigured(key)) {
       throw new AppError("NOT_CONFIGURED", `${info.name} is not configured on this platform. The operator must set ${info.setupEnv?.join(" and ") || "the required environment variables"}.`);
@@ -206,22 +206,39 @@ export async function connectShopify(actor: Actor, input: { shop: string; access
 }
 
 /**
- * Finishes a Google/HubSpot OAuth grant: stores one encrypted credential and
+ * Finishes an OAuth sign-in (Google, HubSpot or GitHub): stores one encrypted credential and
  * fans it out to every catalog entry that shares this provider (see
  * PROVIDER_INTEGRATION_KEYS) — one Google consent screen connects Gmail,
- * Calendar and Sheets together.
+ * Calendar, Sheets, Search Console and Analytics together.
  */
-export async function finalizeOAuthConnection(actor: Actor, provider: "google" | "hubspot", bundle: OAuthTokenBundle) {
+export async function finalizeOAuthConnection(actor: Actor, provider: OAuthProviderId, bundle: OAuthTokenBundle) {
+  const { label } = OAUTH_PROVIDERS[provider];
   const keys = PROVIDER_INTEGRATION_KEYS[provider];
+
+  // GitHub's tools act as a person, so record who that is (and confirm the token works) before saving anything.
+  let config: Record<string, unknown> | null = null;
+  if (provider === "github") {
+    const verified = await githubClient.verifyToken(bundle.accessToken);
+    if (verified === "rejected") throw new AppError("VALIDATION", "GitHub didn't accept the sign-in. Try connecting again.");
+    config = { login: verified.login };
+  }
+
   const results = await prisma.$transaction(async (tx) => {
     const cred = await tx.toolCredential.create({
-      data: { orgId: actor.orgId, name: `${provider === "google" ? "Google" : "HubSpot"} OAuth`, type: "OAUTH2", ciphertext: encodeBundle(bundle), hint: secretHint(bundle.accessToken), createdById: actor.userId ?? null },
+      data: {
+        orgId: actor.orgId,
+        name: config?.login ? `${label} — ${String(config.login)}` : `${label} OAuth`,
+        type: "OAUTH2",
+        ciphertext: encodeBundle(bundle),
+        hint: secretHint(bundle.accessToken),
+        createdById: actor.userId ?? null,
+      },
     });
     const out: { key: string; connId: string; toolCount: number }[] = [];
     for (const key of keys) {
       const info = getIntegration(key);
       if (!info) continue;
-      const { conn, toolCount } = await upsertConnectionAndTools(tx, actor, key, info, { isSimulated: false, credentialId: cred.id });
+      const { conn, toolCount } = await upsertConnectionAndTools(tx, actor, key, info, { isSimulated: false, credentialId: cred.id, config });
       out.push({ key, connId: conn.id, toolCount });
     }
     return out;
@@ -234,7 +251,7 @@ export async function finalizeOAuthConnection(actor: Actor, provider: "google" |
     category: "INTEGRATION",
     actorType: "USER",
     actorUserId: actor.userId,
-    summary: `${provider === "google" ? "Google" : "HubSpot"} connected.`,
+    summary: config?.login ? `${label} connected as ${String(config.login)}.` : `${label} connected.`,
     detail: `${results.map((r) => getIntegration(r.key)?.name).join(", ")} — ${results.reduce((n, r) => n + r.toolCount, 0)} tools available to AI employees.`,
     link: "/integrations",
   });

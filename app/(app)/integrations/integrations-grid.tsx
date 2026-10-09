@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/common/confirm-button";
 import { useAction } from "@/hooks/use-action";
+import { useOAuthPopup, type OAuthPopup } from "@/hooks/use-oauth-popup";
 import type { IntegrationInfo } from "@/lib/integrations/catalog";
 import { connectGitHubAction, connectIntegrationAction, connectShopifyAction, connectWebSearchAction, disconnectIntegrationAction } from "../tools/actions";
 
@@ -72,6 +73,7 @@ function useConnectionResultToast() {
 
 export function IntegrationsGrid({ integrations, canManage }: { integrations: Row[]; canManage: boolean }) {
   useConnectionResultToast();
+  const oauth = useOAuthPopup();
   return (
     <div className="grid gap-8">
       {CATEGORIES.map((cat) => {
@@ -84,7 +86,7 @@ export function IntegrationsGrid({ integrations, canManage }: { integrations: Ro
             </h2>
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((i) => (
-                <IntegrationCard key={i.key} i={i} canManage={canManage} />
+                <IntegrationCard key={i.key} i={i} canManage={canManage} oauth={oauth} />
               ))}
             </ul>
           </section>
@@ -104,13 +106,13 @@ function StatusBadge({ i }: { i: Row }) {
   if (i.connection?.status === "DISCONNECTED") return <Badge variant="secondary">Disconnected</Badge>;
   if (i.availability === "requires_setup") {
     if (i.key === "web_search" && !i.configured) return <Badge variant="secondary">Needs API key</Badge>;
-    return i.configured ? <Badge variant="outline">Available</Badge> : <Badge variant="secondary">Not configured</Badge>;
+    return i.configured || i.tokenFallback ? <Badge variant="outline">Available</Badge> : <Badge variant="secondary">Not configured</Badge>;
   }
   if (i.availability === "coming_soon") return <Badge variant="secondary">Coming soon</Badge>;
   return <Badge variant="outline">Available</Badge>;
 }
 
-function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
+function IntegrationCard({ i, canManage, oauth }: { i: Row; canManage: boolean; oauth: OAuthPopup }) {
   const Icon = ICONS[i.icon] ?? Code2;
   const connect = useAction(connectIntegrationAction, { success: `${i.name} connected.` });
   const disconnect = useAction(disconnectIntegrationAction, { success: `${i.name} disconnected.` });
@@ -153,9 +155,9 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
             {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
           </Button>
         ) : i.availability === "requires_setup" && canManage && i.authType === "oauth2" && i.configured ? (
-          <Button asChild size="sm">
-            <a href={`/api/integrations/${i.provider}/authorize`}>{i.connection ? "Reconnect" : "Connect"}</a>
-          </Button>
+          <OAuthConnect i={i} oauth={oauth} />
+        ) : i.availability === "requires_setup" && canManage && i.authType === "oauth2" && i.tokenFallback ? (
+          <GitHubConnectForm />
         ) : i.availability === "requires_setup" && canManage && i.authType === "platform_key" && i.configured ? (
           <Button size="sm" onClick={() => void connect.run(i.key)} disabled={connect.pending}>
             {connect.pending && <Loader2 className="animate-spin" aria-hidden />} {i.connection ? "Reconnect" : "Connect"}
@@ -172,9 +174,9 @@ function IntegrationCard({ i, canManage }: { i: Row; canManage: boolean }) {
   );
 }
 
-/** GitHub: the company pastes a fine-grained personal access token (no OAuth app to register). */
-function GitHubConnectForm() {
-  const [open, setOpen] = useState(false);
+/** GitHub: the company pastes a fine-grained personal access token (used when there's no OAuth app, or by choice). */
+function GitHubConnectForm({ startOpen = false, onClose }: { startOpen?: boolean; onClose?: () => void }) {
+  const [open, setOpen] = useState(startOpen);
   const [token, setToken] = useState("");
   const connect = useAction(connectGitHubAction, { success: "GitHub connected." });
 
@@ -194,6 +196,7 @@ function GitHubConnectForm() {
           if (res.ok) {
             setToken("");
             setOpen(false);
+            onClose?.();
           }
         });
       }}
@@ -208,7 +211,15 @@ function GitHubConnectForm() {
         limited to the repositories you choose, with Contents (read), Issues (read and write) and Pull requests (read). It&apos;s checked with GitHub, stored encrypted and never shown again.
       </p>
       <div className="flex justify-end gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setOpen(false);
+            onClose?.();
+          }}
+        >
           Cancel
         </Button>
         <Button type="submit" size="sm" disabled={connect.pending}>
@@ -301,5 +312,35 @@ function ShopifyConnectForm() {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Connect / Reconnect for sign-in based integrations: the provider's own login page opens in a small window,
+ * and this card updates as soon as it finishes. Where a token is also accepted (GitHub), that stays one click away.
+ */
+function OAuthConnect({ i, oauth }: { i: Row; oauth: OAuthPopup }) {
+  const [useToken, setUseToken] = useState(false);
+  const provider = i.provider;
+  if (!provider) return null;
+  if (useToken) return <GitHubConnectForm startOpen onClose={() => setUseToken(false)} />;
+  const waiting = oauth.waiting === provider;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button size="sm" onClick={() => oauth.start(provider)} disabled={waiting}>
+        {waiting && <Loader2 className="animate-spin" aria-hidden />} {waiting ? "Waiting for sign-in…" : i.connection ? "Reconnect" : "Connect"}
+      </Button>
+      {waiting ? (
+        <button type="button" onClick={oauth.cancel} className="text-xs text-text-muted underline">
+          Cancel
+        </button>
+      ) : (
+        i.tokenFallback && (
+          <button type="button" onClick={() => setUseToken(true)} className="text-xs text-text-muted underline">
+            Use a token instead
+          </button>
+        )
+      )}
+    </div>
   );
 }

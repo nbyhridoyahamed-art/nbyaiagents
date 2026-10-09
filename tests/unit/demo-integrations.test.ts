@@ -42,7 +42,16 @@ describe("catalog", () => {
       expect(i).toMatchObject({ authType: "oauth2", provider: "google", availability: "requires_setup", category: "Marketing" });
       expect(i.simulated).toBeUndefined();
     }
-    expect(INTEGRATIONS.find((x) => x.key === "github")).toMatchObject({ authType: "credential", availability: "requires_setup" });
+    // GitHub signs in through its own OAuth app when the operator has registered one, and still accepts a pasted token.
+    expect(INTEGRATIONS.find((x) => x.key === "github")).toMatchObject({ authType: "oauth2", provider: "github", tokenFallback: true, availability: "requires_setup" });
+  });
+
+  it("only offers a Connect button for integrations that can actually be connected", () => {
+    // Google Drive has no tools yet, so it must not claim to be waiting on the operator.
+    expect(INTEGRATIONS.find((x) => x.key === "google_drive")).toMatchObject({ availability: "coming_soon" });
+    for (const i of INTEGRATIONS.filter((x) => x.availability === "requires_setup")) {
+      expect(i.authType, `${i.key} needs a way to connect`).toBeDefined();
+    }
   });
 
   it("flags exactly the mock integrations as simulated demos", () => {

@@ -112,11 +112,20 @@ Set any of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or an OpenAI
   - private, loopback and metadata ranges blocked, checked at connect time;
   - redirects are re-validated and never forward credentials across origins;
   - size and time limits.
-- OAuth providers (Google, HubSpot, …) appear as "Not configured" until their client IDs are set.
+- **Sign-in popups.** Integrations that use OAuth (Google, HubSpot, GitHub) connect through the provider's own login page in a small window: an admin clicks **Connect**, signs in there, and the card updates on its own. The window reports back over a same-origin `BroadcastChannel` (the app's `Cross-Origin-Opener-Policy: same-origin` cuts `window.opener`), so nothing is left half-connected. If the browser blocks the window, the same sign-in runs in the current tab. Code: `hooks/use-oauth-popup.ts`, `lib/integrations/oauth/popup*.ts`, `app/api/integrations/[provider]/`.
+- OAuth providers (Google, HubSpot, GitHub) appear as "Not configured" until their client IDs are set.
 - **Google** is one consent for Gmail, Calendar, Sheets, **Search Console** (search performance, URL inspection) and **Analytics** (GA4 properties and reports), all read-only apart from Gmail and Calendar actions. In the same Google Cloud project enable the Gmail, Google Calendar, Google Sheets, Google Search Console, Google Analytics Data and Google Analytics Admin APIs. Admins who connected Google before these were added reconnect once to grant the new permissions.
-- **GitHub**: an admin pastes a fine-grained personal access token. It is checked with GitHub and stored encrypted per company. Tools read repositories, issues, pull requests and files, and can open issues and comment (those two are medium risk and publish to anyone who can see the repository, so grant them with approval).
+- **GitHub**: **Connect** signs in with GitHub once the operator has registered a GitHub OAuth app (below); until then, and by choice afterwards ("Use a token instead"), an admin pastes a fine-grained personal access token. Either way it is checked with GitHub and stored encrypted per company. GitHub's OAuth apps only offer the broad `repo` scope for private repositories, so a token limited to chosen repositories is the least-privilege option. Tools read repositories, issues, pull requests and files, and can open issues and comment (those two are medium risk and publish to anyone who can see the repository, so grant them with approval).
+  - Register the app at GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Homepage URL: `APP_URL`. Authorization callback URL: `{APP_URL}/api/integrations/github/callback`. Then set `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
 - **Web Search (Tavily)**: an admin pastes their own Tavily API key on the Integrations page. It is checked with Tavily, stored encrypted per company and takes precedence over the optional platform-wide `TAVILY_API_KEY`. After connecting, grant the Web search tools to the employees who need them.
 - Platform admins can switch any integration off for everyone (`/admin/catalog`).
+
+### Websites
+
+`/websites` is where a company says which sites it works on. Each website is added by address and linked, once, to **one Search Console property and one Analytics (GA4) property** chosen from what the connected Google account can read (the best match is pre-selected; unverified Search Console properties are shown but can't be picked). Each website then has a page with Overview, Site audit, Analytics and Search Console tabs, a site switcher, and a one-click SEO audit that hands an AI employee the exact properties to use.
+
+- **AI employees only see linked properties.** Once a workspace has at least one website, the Search Console and Analytics tools list and accept only the properties linked to its websites (a tool also accepts the website's address, e.g. `example.com`, in place of a property id). A workspace with no websites keeps the old behaviour: everything the Google account can read. Logic: `lib/websites/scope.ts`; service: `server/services/websites.ts`.
+- Needs Google connected on the Integrations page. Viewing needs `analytics:read`; adding, linking and removing needs `tools:manage`; running an audit needs `tasks:write`.
 
 ## Queues and background work
 

@@ -5,6 +5,8 @@
  *    from the platform operator before anyone can connect ("Not configured").
  *  - "coming_soon": planned; not connectable.
  */
+import type { OAuthProviderId } from "@/lib/integrations/oauth/types";
+
 export type IntegrationAvailability = "available" | "requires_setup" | "coming_soon";
 
 /**
@@ -27,7 +29,9 @@ export interface IntegrationInfo {
   simulated?: boolean;
   authType?: IntegrationAuthType;
   /** OAuth provider this integration shares a grant with (see lib/integrations/oauth). */
-  provider?: "google" | "hubspot";
+  provider?: OAuthProviderId;
+  /** An OAuth integration that can also be connected by pasting a token when the platform has no OAuth app for it. */
+  tokenFallback?: boolean;
   /** Env var(s) the operator must set for requires_setup integrations. */
   setupEnv?: string[];
   icon: string;
@@ -49,7 +53,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   // Real providers — adapter architecture in place; require operator setup.
   { key: "gmail", name: "Gmail", category: "Communication", description: "Read, draft and send email.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "mail" },
   { key: "google_calendar", name: "Google Calendar", category: "Productivity", description: "Read and create calendar events.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "calendar" },
-  { key: "google_drive", name: "Google Drive", category: "Productivity", description: "Search and read files; sync knowledge.", availability: "requires_setup", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "folder" },
+  { key: "google_drive", name: "Google Drive", category: "Productivity", description: "Search and read files; sync knowledge.", availability: "coming_soon", icon: "folder" },
   { key: "google_sheets", name: "Google Sheets", category: "Data", description: "Read and write spreadsheet rows.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "sheet" },
   { key: "google_search_console", name: "Google Search Console", category: "Marketing", description: "Search performance (clicks, impressions, queries, pages) and URL indexing status.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "bar-chart" },
   { key: "google_analytics", name: "Google Analytics", category: "Marketing", description: "GA4 traffic, audience and conversion reports.", availability: "requires_setup", authType: "oauth2", provider: "google", setupEnv: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"], icon: "bar-chart" },
@@ -65,7 +69,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   { key: "pipedrive", name: "Pipedrive", category: "CRM", description: "Deals and contacts.", availability: "coming_soon", icon: "contact" },
   { key: "airtable", name: "Airtable", category: "Data", description: "Bases and records.", availability: "coming_soon", icon: "sheet" },
   { key: "woocommerce", name: "WooCommerce", category: "Commerce", description: "Orders and products.", availability: "coming_soon", icon: "shopping-bag" },
-  { key: "github", name: "GitHub", category: "Development", description: "Repositories, issues and pull requests. Connect with a fine-grained access token.", availability: "requires_setup", authType: "credential", setupEnv: [], icon: "github" },
+  { key: "github", name: "GitHub", category: "Development", description: "Repositories, issues and pull requests. Sign in with GitHub, or connect a fine-grained access token.", availability: "requires_setup", authType: "oauth2", provider: "github", tokenFallback: true, setupEnv: ["GITHUB_OAUTH_CLIENT_ID", "GITHUB_OAUTH_CLIENT_SECRET"], icon: "github" },
   { key: "gitlab", name: "GitLab", category: "Development", description: "Issues and merge requests.", availability: "coming_soon", icon: "gitlab" },
 ];
 
