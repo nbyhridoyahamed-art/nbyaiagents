@@ -9,7 +9,7 @@ import { assertSafeUrl } from "@/lib/security/ssrf";
 import { redact } from "@/lib/security/redact";
 import { getToolDefinition } from "@/lib/tools/registry";
 import { decryptSecret } from "@/lib/security/crypto";
-import { runHttpTool } from "@/server/tools/executor";
+import { loadSecret, runHttpTool } from "@/server/tools/executor";
 import { validateToolInput } from "@/server/tools/validate";
 import { writeAudit } from "@/server/services/audit";
 import type { ToolResult } from "@/lib/tools/types";
@@ -129,12 +129,16 @@ export async function testTool(actor: Actor, toolId: string, input: unknown, mod
   if (!tool) throw notFound("Tool");
   const validInput = await validateToolInput(actor.orgId, tool.key, input);
   const started = Date.now();
-  const ctx = { orgId: actor.orgId, agentId: null, runId: null, mode, idempotencyKey: `test:${Date.now()}`, secret: null as string | null };
+  const ctx = { orgId: actor.orgId, agentId: null, runId: null, mode, idempotencyKey: `test:${Date.now()}`, secret: null as string | null, connectionConfig: null as Record<string, unknown> | null };
   let result: ToolResult;
   try {
     if (tool.kind === "BUILTIN") {
       const def = getToolDefinition(tool.key);
       if (!def) throw new AppError("NOT_CONFIGURED", "No handler registered.");
+      // Same credential and settings an employee's run would get from the integration's connection.
+      const connection = tool.connectionId ? await prisma.integrationConnection.findFirst({ where: { id: tool.connectionId, orgId: actor.orgId } }) : null;
+      ctx.secret = await loadSecret(tool, connection?.credentialId ?? null);
+      ctx.connectionConfig = (connection?.config as Record<string, unknown> | null) ?? null;
       result = mode === "SIMULATION" ? await def.simulate(validInput, ctx) : await def.execute(validInput, ctx);
     } else {
       if (tool.credentialId) {

@@ -231,7 +231,8 @@ async function verifyApproval(p: ExecuteToolParams, toolKey: string, input: Reco
   return stableStringify(approvedInput) === stableStringify(input);
 }
 
-async function loadSecret(tool: ToolRow, connectionCredentialId: string | null): Promise<string | null> {
+/** The decrypted key or (refreshed) OAuth access token a tool runs with: the tool's own credential, else its integration's. */
+export async function loadSecret(tool: ToolRow, connectionCredentialId: string | null): Promise<string | null> {
   const credId = tool.credentialId ?? connectionCredentialId;
   if (!credId) return null;
   const cred = await prisma.toolCredential.findFirst({ where: { id: credId, orgId: tool.orgId, revokedAt: null } });
